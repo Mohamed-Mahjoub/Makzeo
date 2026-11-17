@@ -1,0 +1,36 @@
+# Environnement de développement / démonstration (minikube, kind, Docker Desktop)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: stock-management
+resources:
+  - ../../base
+labels:
+  - pairs:
+      environment: dev
+    includeSelectors: false
+
+# Images construites localement (minikube image load / kind load docker-image)
+images:
+  - name: stock-management/auth-service
+    newTag: latest
+  - name: stock-management/product-service
+    newTag: latest
+  - name: stock-management/supplier-service
+    newTag: latest
+  - name: stock-management/stock-service
+    newTag: latest
+  - name: stock-management/reporting-service
+    newTag: latest
+  - name: stock-management/frontend
+    newTag: latest
+
+# Secrets de DÉMONSTRATION uniquement (ne jamais utiliser en production)
+secretGenerator:
+  - name: stock-secrets
+    literals:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres-dev
+      - JWT_SECRET=dev-only-jwt-secret-please-change-0123456789abcdef
+      - ADMIN_PASSWORD=Admin@12345
+generatorOptions:
+  disableNameSuffixHash: true

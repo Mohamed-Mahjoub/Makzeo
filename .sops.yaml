@@ -1,0 +1,6 @@
+# Règles SOPS : chiffrement des Secrets Kubernetes avec age (clé publique du cluster)
+# Générer la clé : age-keygen -o age.agekey  (la clé privée est ensuite fournie à Flux, voir deploy/flux/README)
+creation_rules:
+  - path_regex: deploy/k8s/overlays/.*/secret.*\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: CHANGE_ME_age1_public_key

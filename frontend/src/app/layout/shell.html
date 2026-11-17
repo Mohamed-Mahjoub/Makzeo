@@ -1,0 +1,51 @@
+<div class="shell" [class.shell--collapsed]="collapsed()">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="#0f2742" />
+        <path d="M8 11l8-4 8 4v10l-8 4-8-4zM8 11l8 4 8-4M16 15v10" fill="none" stroke="#5eead4" stroke-width="2.2"
+              stroke-linejoin="round" />
+      </svg>
+      <span class="sidebar__name">Makzeo</span>
+    </div>
+    <nav>
+      @for (section of menu(); track section.title) {
+        <div class="sidebar__section">{{ section.title }}</div>
+        @for (item of section.items; track item.path) {
+          <a class="sidebar__link" [routerLink]="item.path" routerLinkActive="is-active" [title]="item.label">
+            <app-icon [name]="item.icon" />
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      }
+    </nav>
+    <div class="sidebar__footer">Makzeo · PFE Microservices &amp; DevOps</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="icon-btn" (click)="collapsed.set(!collapsed())" aria-label="Menu">
+        <app-icon name="menu" />
+      </button>
+      <div class="topbar__spacer"></div>
+      @if (settings.settings(); as s) {
+        <a class="currency-chip" routerLink="/settings" [title]="'Devise : ' + s.currencyName">{{ s.currency }}</a>
+      }
+      @if (auth.user(); as user) {
+        <a class="topbar__user" routerLink="/profile" title="Mon profil">
+          <span class="avatar">{{ initials() }}</span>
+          <span class="topbar__who">
+            <strong>{{ user.fullName }}</strong>
+            <small>{{ roleLabel() }}</small>
+          </span>
+        </a>
+      }
+      <button type="button" class="btn btn--ghost btn--sm" (click)="auth.logout()">
+        <app-icon name="logout" [size]="16" /> Déconnexion
+      </button>
+    </header>
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

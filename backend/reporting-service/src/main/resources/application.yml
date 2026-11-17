@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:8085}
+  shutdown: graceful
+
+spring:
+  application:
+    name: reporting-service
+  web:
+    locale: fr
+    locale-resolver: fixed
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+app:
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+  stock-service-url: ${STOCK_SERVICE_URL:http://localhost:8084}
+  auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  default-currency: ${DEFAULT_CURRENCY:MAD}
+  zone: ${APP_ZONE:Africa/Casablanca}
+  max-rows: ${REPORT_MAX_ROWS:20000}
+  openapi:
+    description: "Rapports PDF / Excel et indicateurs du tableau de bord décisionnel."
+
+# Documentation OpenAPI 3 / Swagger UI (springdoc)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    persist-authorization: true
+    display-request-duration: true
+  default-produces-media-type: application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    version: '@project.version@'

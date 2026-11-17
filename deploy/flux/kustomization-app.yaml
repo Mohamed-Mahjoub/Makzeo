@@ -1,0 +1,21 @@
+# Déploiement continu de l'application (overlay de production)
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: stock-management-app
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 10m
+  sourceRef:
+    kind: GitRepository
+    name: stock-management
+  path: ./deploy/k8s/overlays/prod
+  prune: true          # supprime du cluster ce qui a été retiré de Git
+  wait: true           # attend que les Deployments soient prêts (santé)
+  # Déchiffrement des secrets SOPS (clé privée age stockée dans le secret sops-age)
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age

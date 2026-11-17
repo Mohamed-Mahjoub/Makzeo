@@ -1,0 +1,77 @@
+# Point d'entrée unique (API Gateway) : routage par préfixe de chemin vers chaque microservice
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stock-management
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stock.local
+      http:
+        paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8081
+          - path: /api/users
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8081
+          - path: /api/settings
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8081
+          - path: /api/categories
+            pathType: Prefix
+            backend:
+              service:
+                name: product-service
+                port:
+                  number: 8082
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: product-service
+                port:
+                  number: 8082
+          - path: /api/suppliers
+            pathType: Prefix
+            backend:
+              service:
+                name: supplier-service
+                port:
+                  number: 8083
+          - path: /api/stock
+            pathType: Prefix
+            backend:
+              service:
+                name: stock-service
+                port:
+                  number: 8084
+          - path: /api/reports
+            pathType: Prefix
+            backend:
+              service:
+                name: reporting-service
+                port:
+                  number: 8085
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

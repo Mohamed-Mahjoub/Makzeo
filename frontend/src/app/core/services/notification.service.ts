@@ -1,0 +1,28 @@
+import { Injectable, signal } from '@angular/core';
+
+export interface Toast {
+  id: number;
+  type: 'success' | 'error' | 'info';
+  message: string;
+}
+
+/** Notifications éphémères (toasts) affichées en haut à droite. */
+@Injectable({ providedIn: 'root' })
+export class NotificationService {
+  private nextId = 1;
+  readonly toasts = signal<Toast[]>([]);
+
+  success(message: string): void { this.push('success', message); }
+  error(message: string): void { this.push('error', message, 7000); }
+  info(message: string): void { this.push('info', message); }
+
+  dismiss(id: number): void {
+    this.toasts.update((list) => list.filter((t) => t.id !== id));
+  }
+
+  private push(type: Toast['type'], message: string, duration = 4000): void {
+    const toast: Toast = { id: this.nextId++, type, message };
+    this.toasts.update((list) => [...list, toast]);
+    setTimeout(() => this.dismiss(toast.id), duration);
+  }
+}

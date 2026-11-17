@@ -1,0 +1,39 @@
+# Lancement manuel du pipeline :
+#   kubectl create -f deploy/tekton/pipelinerun.yaml
+#   tkn pipelinerun logs -f -n stock-ci --last
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: stock-ci-cd-manual-
+  namespace: stock-ci
+spec:
+  pipelineRef:
+    name: stock-ci-cd
+  taskRunTemplate:
+    serviceAccountName: stock-pipeline
+  timeouts:
+    pipeline: 1h0m0s
+  params:
+    - name: repo-url
+      value: https://github.com/CHANGE_ME/stock-management.git
+    - name: revision
+      value: main
+    - name: registry
+      value: ghcr.io/CHANGE_ME
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    - name: docker-credentials
+      secret:
+        secretName: registry-credentials
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+    - name: maven-repo
+      persistentVolumeClaim:
+        claimName: maven-cache

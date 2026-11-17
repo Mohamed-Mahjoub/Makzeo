@@ -1,0 +1,105 @@
+<app-page-header title="Entrées / sorties de stock" subtitle="Scannez un code-barres ou recherchez un produit, puis saisissez la quantité" />
+
+@if (auth.canMoveStock()) {
+  <section class="card movement-form">
+    <div class="segmented segmented--lg" role="group" aria-label="Type de mouvement">
+      <button type="button" [class.is-active]="type() === 'IN'" (click)="type.set('IN')">
+        <app-icon name="arrowIn" [size]="16" /> Entrée</button>
+      <button type="button" [class.is-active]="type() === 'OUT'" (click)="type.set('OUT')">
+        <app-icon name="arrowOut" [size]="16" /> Sortie</button>
+    </div>
+
+    <div class="grid grid--2">
+      <div>
+        <app-product-picker (picked)="select($event)" />
+        @if (product(); as p) {
+          <div class="selected-product">
+            <div>
+              <strong>{{ p.name }}</strong>
+              <small class="muted">{{ p.reference }} · {{ p.barcode }} · {{ p.categoryName }}</small>
+            </div>
+            <div class="selected-product__stock">
+              <span class="muted">Stock actuel</span>
+              <strong [class.text-danger]="(level()?.quantity ?? 0) === 0">{{ level()?.quantity ?? 0 }}</strong>
+              <small class="muted">seuil {{ p.minStock }}</small>
+            </div>
+          </div>
+        } @else {
+          <p class="muted small">Aucun produit sélectionné.</p>
+        }
+      </div>
+
+      <form class="form" (ngSubmit)="submit()">
+        <div class="form--grid">
+          <label class="field"><span>Quantité *</span>
+            <input type="number" name="quantity" [(ngModel)]="quantity" min="1" step="1" required /></label>
+          @if (type() === 'IN') {
+            <label class="field"><span>Fournisseur</span>
+              <select name="supplierId" [(ngModel)]="supplierId">
+                <option [ngValue]="null">— Aucun —</option>
+                @for (s of suppliers(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+              </select></label>
+          }
+          <label class="field"><span>{{ type() === 'IN' ? 'N° bon de livraison' : 'N° bon de sortie' }}</span>
+            <input name="doc" [(ngModel)]="documentReference" maxlength="100" /></label>
+          <label class="field"><span>Motif</span>
+            <input name="reason" [(ngModel)]="reason" maxlength="500"
+                   [placeholder]="type() === 'IN' ? 'Réception commande…' : 'Service demandeur…'" /></label>
+        </div>
+        <div class="form__actions">
+          <button type="submit" class="btn" [class.btn--success]="type() === 'IN'" [class.btn--primary]="type() === 'OUT'"
+                  [disabled]="!product() || saving()">
+            Enregistrer {{ type() === 'IN' ? "l'entrée" : 'la sortie' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+}
+
+<section class="card">
+  <div class="card__title"><h3>Historique des mouvements</h3></div>
+  <form class="toolbar" (ngSubmit)="load()">
+    <select class="select" name="ftype" [(ngModel)]="filterType">
+      <option [ngValue]="null">Tous les types</option>
+      <option [ngValue]="'IN'">Entrées</option>
+      <option [ngValue]="'OUT'">Sorties</option>
+      <option [ngValue]="'ADJUSTMENT'">Ajustements</option>
+    </select>
+    <label class="inline-field">Du <input type="date" name="from" [(ngModel)]="from" /></label>
+    <label class="inline-field">au <input type="date" name="to" [(ngModel)]="to" /></label>
+    <input class="input-sm" name="user" [(ngModel)]="user" placeholder="Utilisateur" />
+    <button type="submit" class="btn btn--ghost">Filtrer</button>
+    @if (productFilter(); as pf) {
+      <span class="chip is-active">{{ pf.reference }} <button type="button" (click)="filterOnProduct(null)">×</button></span>
+    }
+  </form>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Produit</th><th>Type</th><th class="num">Quantité</th><th class="num">Avant</th>
+        <th class="num">Après</th><th>Document</th><th>Motif</th><th>Utilisateur</th></tr></thead>
+      <tbody>
+        @for (m of history()?.content ?? []; track m.id) {
+          <tr>
+            <td>{{ m.occurredAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td><button type="button" class="link" (click)="filterOnProduct({ id: m.productId, reference: m.productReference })">
+              <strong>{{ m.productReference }}</strong></button><br /><small class="muted">{{ m.productName }}</small></td>
+            <td><span class="badge" [class.badge--success]="m.type === 'IN'" [class.badge--info]="m.type === 'OUT'"
+                      [class.badge--warning]="m.type === 'ADJUSTMENT'">{{ m.typeLabel }}</span></td>
+            <td class="num" [class.text-success]="m.signedQuantity > 0" [class.text-danger]="m.signedQuantity < 0">
+              {{ m.signedQuantity > 0 ? '+' : '' }}{{ m.signedQuantity }}</td>
+            <td class="num muted">{{ m.quantityBefore }}</td>
+            <td class="num"><strong>{{ m.quantityAfter }}</strong></td>
+            <td class="mono">{{ m.documentReference ?? '—' }}</td>
+            <td>{{ m.reason ?? '' }}</td>
+            <td>{{ m.performedBy }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="9" class="center muted">Aucun mouvement sur la période.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <app-pagination [page]="page()" [totalPages]="history()?.totalPages ?? 0" [totalElements]="history()?.totalElements ?? 0"
+                  (pageChange)="load($event)" />
+</section>

@@ -1,0 +1,124 @@
+<app-page-header title="Produits" subtitle="Catalogue : références, catégories, prix, seuils et codes-barres">
+  @if (auth.canManageCatalog()) {
+    <button type="button" class="btn btn--primary" (click)="openCreate()"><app-icon name="plus" [size]="16" /> Nouveau produit</button>
+  }
+</app-page-header>
+
+<section class="card">
+  <form class="toolbar" (ngSubmit)="load()">
+    <div class="search">
+      <app-icon name="search" [size]="16" />
+      <input name="q" [(ngModel)]="q" placeholder="Nom, référence ou code-barres…" />
+    </div>
+    <select class="select" name="cat" [ngModel]="categoryFilter" (ngModelChange)="categoryFilter = $event; load()">
+      <option [ngValue]="null">Toutes catégories</option>
+      @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+    </select>
+    <select class="select" name="active" [ngModel]="activeFilter" (ngModelChange)="activeFilter = $event; load()">
+      <option [ngValue]="true">Actifs</option>
+      <option [ngValue]="false">Désactivés</option>
+      <option [ngValue]="null">Tous</option>
+    </select>
+    <button type="submit" class="btn btn--ghost">Rechercher</button>
+  </form>
+
+  <div class="table-wrap" [class.is-loading]="loading()">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Référence</th><th>Désignation</th><th>Catégorie</th><th>Code-barres</th>
+          <th class="num">Prix achat ({{ currency().code }})</th><th class="num">Prix vente ({{ currency().code }})</th><th class="num">Stock</th><th class="num">Seuil</th>
+          <th>État</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of result()?.content ?? []; track p.id) {
+          <tr [class.row--muted]="!p.active">
+            <td><strong>{{ p.reference }}</strong></td>
+            <td>{{ p.name }}<br /><small class="muted">{{ unitLabels[p.unit] }} · {{ supplierName(p.supplierId) }}</small></td>
+            <td>{{ p.categoryName }}</td>
+            <td><button type="button" class="link mono" (click)="barcodeProduct.set(p)" title="Afficher le code-barres">
+              <app-icon name="barcode" [size]="14" /> {{ p.barcode }}</button></td>
+            <td class="num">{{ amount(p.purchasePrice) }}</td>
+            <td class="num">{{ amount(p.salePrice) }}</td>
+            <td class="num"><strong>{{ quantityOf(p) }}</strong></td>
+            <td class="num">{{ p.minStock }}</td>
+            <td>
+              @if (!p.active) {
+                <span class="badge">Désactivé</span>
+              } @else {
+                <span class="badge" [class.badge--success]="statusOf(p) === 'OK'" [class.badge--warning]="statusOf(p) === 'LOW'"
+                      [class.badge--danger]="statusOf(p) === 'OUT_OF_STOCK'">{{ statusLabels[statusOf(p)] }}</span>
+              }
+            </td>
+            <td class="actions">
+              @if (auth.canManageCatalog()) {
+                <button type="button" class="icon-btn" (click)="openEdit(p)" title="Modifier"><app-icon name="edit" [size]="16" /></button>
+                <button type="button" class="icon-btn" (click)="toggleActive(p)" [title]="p.active ? 'Désactiver' : 'Réactiver'">
+                  <app-icon name="power" [size]="16" /></button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="10" class="center muted">Aucun produit trouvé.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <app-pagination [page]="page()" [totalPages]="result()?.totalPages ?? 0" [totalElements]="result()?.totalElements ?? 0"
+                  (pageChange)="load($event)" />
+</section>
+
+@if (formOpen()) {
+  <app-modal [title]="editing() ? 'Modifier le produit' : 'Nouveau produit'" [wide]="true" (closed)="formOpen.set(false)">
+    <form class="form form--grid" (ngSubmit)="save()" #f="ngForm">
+      <label class="field"><span>Référence *</span>
+        <input name="reference" [(ngModel)]="form.reference" required maxlength="50" pattern="[A-Za-z0-9._/-]+" /></label>
+      <label class="field"><span>Désignation *</span>
+        <input name="name" [(ngModel)]="form.name" required maxlength="150" /></label>
+      <label class="field"><span>Catégorie *</span>
+        <select name="categoryId" [(ngModel)]="form.categoryId" required>
+          <option [ngValue]="null" disabled>— Choisir —</option>
+          @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+        </select></label>
+      <label class="field"><span>Fournisseur</span>
+        <select name="supplierId" [(ngModel)]="form.supplierId">
+          <option [ngValue]="null">— Aucun —</option>
+          @for (s of suppliers(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+        </select></label>
+      <label class="field"><span>Code-barres (EAN-13 ou code interne)</span>
+        <input name="barcode" [(ngModel)]="form.barcode" maxlength="32" placeholder="Vide = EAN-13 généré automatiquement" /></label>
+      <label class="field"><span>Unité</span>
+        <select name="unit" [(ngModel)]="form.unit">
+          @for (u of units; track u) { <option [ngValue]="u">{{ unitLabels[u] }}</option> }
+        </select></label>
+      <label class="field"><span>Prix d'achat ({{ currency().code }})</span>
+        <input type="number" name="purchasePrice" [(ngModel)]="form.purchasePrice" min="0" [step]="priceStep()" /></label>
+      <label class="field"><span>Prix de vente ({{ currency().code }})</span>
+        <input type="number" name="salePrice" [(ngModel)]="form.salePrice" min="0" [step]="priceStep()" /></label>
+      <label class="field"><span>Seuil minimum *</span>
+        <input type="number" name="minStock" [(ngModel)]="form.minStock" required min="0" step="1" /></label>
+      <label class="field"><span>Stock maximum</span>
+        <input type="number" name="maxStock" [(ngModel)]="form.maxStock" min="0" step="1" /></label>
+      <label class="field field--full"><span>Description</span>
+        <textarea name="description" rows="3" [(ngModel)]="form.description" maxlength="1000"></textarea></label>
+      <div class="form__actions field--full">
+        <button type="button" class="btn btn--ghost" (click)="formOpen.set(false)">Annuler</button>
+        <button type="submit" class="btn btn--primary" [disabled]="f.invalid || saving()">Enregistrer</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (barcodeProduct(); as p) {
+  <app-modal title="Code-barres" (closed)="barcodeProduct.set(null)">
+    <div class="barcode-card printable">
+      <strong>{{ p.name }}</strong>
+      <small class="muted">{{ p.reference }}</small>
+      <app-barcode [code]="p.barcode" [width]="300" />
+    </div>
+    <div class="form__actions">
+      <button type="button" class="btn btn--ghost" (click)="print()">Imprimer l'étiquette</button>
+    </div>
+  </app-modal>
+}

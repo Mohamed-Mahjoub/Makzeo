@@ -1,0 +1,564 @@
+# Makzeo - requêtes pour le client HTTP d'IntelliJ (services lancés en local, ports 8081-8085).
+# Exécuter dans l'ordre : chaque réponse enregistre les variables utiles (jeton, identifiants).
+
+@authUrl = http://localhost:8081
+@productUrl = http://localhost:8082
+@supplierUrl = http://localhost:8083
+@stockUrl = http://localhost:8084
+@reportingUrl = http://localhost:8085
+@adminPassword = Admin@12345
+
+### Initialisation : suffixe unique pour cette exécution
+GET {{authUrl}}/actuator/health
+
+> {% client.global.set('run', String(Date.now()).slice(-6)); %}
+
+### 1. Authentification & utilisateurs — Login admin
+POST {{authUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "{{adminPassword}}"
+}
+
+> {% client.global.set('token', response.body.accessToken); %}
+
+### 1. Authentification & utilisateurs — Mon profil
+GET {{authUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 1. Authentification & utilisateurs — Créer un gestionnaire
+POST {{authUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "gestionnaire{{run}}",
+  "email": "gestionnaire{{run}}@stock.local",
+  "fullName": "Gestionnaire Test",
+  "password": "Password123",
+  "roles": [
+    "GESTIONNAIRE"
+  ]
+}
+
+> {% client.global.set('gestionnaireId', response.body.id); %}
+
+### 1. Authentification & utilisateurs — Créer un magasinier
+POST {{authUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "magasinier{{run}}",
+  "email": "magasinier{{run}}@stock.local",
+  "fullName": "Magasinier Test",
+  "password": "Password123",
+  "roles": [
+    "MAGASINIER"
+  ]
+}
+
+> {% client.global.set('magasinierId', response.body.id); %}
+
+### 1. Authentification & utilisateurs — Créer un consultant
+POST {{authUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "consultant{{run}}",
+  "email": "consultant{{run}}@stock.local",
+  "fullName": "Consultant Test",
+  "password": "Password123",
+  "roles": [
+    "CONSULTANT"
+  ]
+}
+
+### 1. Authentification & utilisateurs — Login magasinier
+POST {{authUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "magasinier{{run}}",
+  "password": "Password123"
+}
+
+> {% client.global.set('tokenMagasinier', response.body.accessToken); %}
+
+### 1. Authentification & utilisateurs — Login consultant
+POST {{authUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "consultant{{run}}",
+  "password": "Password123"
+}
+
+> {% client.global.set('tokenConsultant', response.body.accessToken); %}
+
+### 1. Authentification & utilisateurs — Lister les utilisateurs
+GET {{authUrl}}/api/users?q=&page=0&size=20
+Authorization: Bearer {{token}}
+
+### 2. Paramètres (devise) — Paramètres actuels
+GET {{authUrl}}/api/settings
+Authorization: Bearer {{token}}
+
+### 2. Paramètres (devise) — Devises disponibles (ISO 4217)
+GET {{authUrl}}/api/settings/currencies
+Authorization: Bearer {{token}}
+
+### 2. Paramètres (devise) — Choisir le dinar tunisien (TND)
+PUT {{authUrl}}/api/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currency": "TND"
+}
+
+### 3. Fournisseurs (tous pays) — Liste des pays (ISO 3166)
+GET {{supplierUrl}}/api/suppliers/countries
+Authorization: Bearer {{token}}
+
+### 3. Fournisseurs (tous pays) — Créer un fournisseur marocain (ICE)
+POST {{supplierUrl}}/api/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "F{{run}}",
+  "name": "Maroc Bureautique SARL",
+  "contactName": "M. Alaoui",
+  "email": "contact@marocbureau.ma",
+  "phone": "+212 522 00 00 00",
+  "address": "12 bd Zerktouni",
+  "city": "Casablanca",
+  "country": "MA",
+  "taxId": "001234567{{run}}"
+}
+
+> {% client.global.set('supplierId', response.body.id); %}
+
+### 3. Fournisseurs (tous pays) — Créer un fournisseur tunisien (matricule fiscal)
+POST {{supplierUrl}}/api/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "TN{{run}}",
+  "name": "Carthage Fournitures",
+  "city": "Tunis",
+  "country": "TN",
+  "taxId": "{{run}}7/A/M/000"
+}
+
+### 3. Fournisseurs (tous pays) — Créer un fournisseur français (n° TVA)
+POST {{supplierUrl}}/api/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "FR{{run}}",
+  "name": "Lyon Bureau SAS",
+  "city": "Lyon",
+  "country": "FR",
+  "taxId": "FR40{{run}}12345"
+}
+
+### 3. Fournisseurs (tous pays) — Fournisseurs tunisiens
+GET {{supplierUrl}}/api/suppliers?country=TN
+Authorization: Bearer {{token}}
+
+### 3. Fournisseurs (tous pays) — Rechercher des fournisseurs
+GET {{supplierUrl}}/api/suppliers?q=bureautique
+Authorization: Bearer {{token}}
+
+### 3. Fournisseurs (tous pays) — Détail fournisseur
+GET {{supplierUrl}}/api/suppliers/{{supplierId}}
+Authorization: Bearer {{token}}
+
+### 4. Catalogue — Lister les catégories
+GET {{productUrl}}/api/categories
+Authorization: Bearer {{token}}
+
+### 4. Catalogue — Créer une catégorie
+POST {{productUrl}}/api/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Consommables {{run}}",
+  "description": "Papeterie et consommables"
+}
+
+> {% client.global.set('categoryId', response.body.id); %}
+
+### 4. Catalogue — Créer un produit (code-barres généré)
+POST {{productUrl}}/api/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "PAP-{{run}}",
+  "name": "Rame papier A4 80g",
+  "categoryId": {{categoryId}},
+  "unit": "PAQUET",
+  "purchasePrice": 32.505,
+  "salePrice": 45.75,
+  "minStock": 10,
+  "maxStock": 200,
+  "supplierId": {{supplierId}}
+}
+
+> {% client.global.set('productId', response.body.id); client.global.set('productBarcode', response.body.barcode); %}
+
+### 4. Catalogue — Créer un 2e produit
+POST {{productUrl}}/api/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "STY-{{run}}",
+  "name": "Stylo bille bleu",
+  "categoryId": {{categoryId}},
+  "unit": "PIECE",
+  "purchasePrice": 2.5,
+  "salePrice": 4,
+  "minStock": 50
+}
+
+> {% client.global.set('product2Id', response.body.id); %}
+
+### 4. Catalogue — Rechercher des produits
+GET {{productUrl}}/api/products?q={{run}}&page=0&size=20
+Authorization: Bearer {{token}}
+
+### 4. Catalogue — Scanner un code-barres
+GET {{productUrl}}/api/products/barcode/{{productBarcode}}
+Authorization: Bearer {{token}}
+
+### 4. Catalogue — Modifier le produit
+PUT {{productUrl}}/api/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "PAP-{{run}}",
+  "name": "Rame papier A4 80g blanc",
+  "categoryId": {{categoryId}},
+  "unit": "PAQUET",
+  "purchasePrice": 33,
+  "salePrice": 46,
+  "minStock": 10,
+  "maxStock": 200,
+  "supplierId": {{supplierId}}
+}
+
+### 5. Mouvements & alertes — Entrée de stock (100)
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "IN",
+  "quantity": 100,
+  "supplierId": {{supplierId}},
+  "documentReference": "BL-{{run}}",
+  "reason": "Réception commande"
+}
+
+### 5. Mouvements & alertes — Sortie de stock (92) -> alerte SEUIL_MIN
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "OUT",
+  "quantity": 92,
+  "reason": "Service comptabilité"
+}
+
+### 5. Mouvements & alertes — Alertes actives
+GET {{stockUrl}}/api/stock/alerts?activeOnly=true
+Authorization: Bearer {{token}}
+
+### 5. Mouvements & alertes — Sortie (8) -> RUPTURE
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "OUT",
+  "quantity": 8
+}
+
+### 5. Mouvements & alertes — Alertes actives (rupture)
+GET {{stockUrl}}/api/stock/alerts?activeOnly=true
+Authorization: Bearer {{token}}
+
+> {% client.global.set('alertId', response.body.content[0].id); %}
+
+### 5. Mouvements & alertes — Acquitter l'alerte
+PATCH {{stockUrl}}/api/stock/alerts/{{alertId}}/acknowledge
+Authorization: Bearer {{tokenMagasinier}}
+
+### 5. Mouvements & alertes — Réapprovisionnement (50) -> alerte résolue
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "IN",
+  "quantity": 50
+}
+
+### 5. Mouvements & alertes — Entrée produit 2 (40, sous le seuil 50)
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{product2Id}},
+  "type": "IN",
+  "quantity": 40
+}
+
+### 5. Mouvements & alertes — Niveau de stock du produit
+GET {{stockUrl}}/api/stock/levels/{{productId}}
+Authorization: Bearer {{token}}
+
+### 5. Mouvements & alertes — Tous les niveaux de stock
+GET {{stockUrl}}/api/stock/levels
+Authorization: Bearer {{token}}
+
+### 5. Mouvements & alertes — Historique du produit
+GET {{stockUrl}}/api/stock/movements?productId={{productId}}
+Authorization: Bearer {{token}}
+
+### 5. Mouvements & alertes — Tableau de bord
+GET {{stockUrl}}/api/stock/dashboard
+Authorization: Bearer {{token}}
+
+### 6. Inventaire — Ouvrir un inventaire
+POST {{stockUrl}}/api/stock/inventories
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "name": "Inventaire test {{run}}"
+}
+
+> {% client.global.set('inventoryId', response.body.id); %}
+
+### 6. Inventaire — Compter produit 1 (47 au lieu de 50)
+PUT {{stockUrl}}/api/stock/inventories/{{inventoryId}}/counts
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "countedQuantity": 47
+}
+
+### 6. Inventaire — Compter produit 2 (40)
+PUT {{stockUrl}}/api/stock/inventories/{{inventoryId}}/counts
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{product2Id}},
+  "countedQuantity": 40
+}
+
+### 6. Inventaire — Valider l'inventaire (admin)
+POST {{stockUrl}}/api/stock/inventories/{{inventoryId}}/validate
+Authorization: Bearer {{token}}
+
+### 6. Inventaire — Vérifier le mouvement d'ajustement
+GET {{stockUrl}}/api/stock/movements?inventoryId={{inventoryId}}
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — État du stock (PDF)
+GET {{reportingUrl}}/api/reports/stock?format=pdf
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — État du stock (XLSX)
+GET {{reportingUrl}}/api/reports/stock?format=xlsx
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — Mouvements (PDF)
+GET {{reportingUrl}}/api/reports/movements?format=pdf
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — Mouvements (XLSX)
+GET {{reportingUrl}}/api/reports/movements?format=xlsx
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — Alertes (PDF)
+GET {{reportingUrl}}/api/reports/alerts?activeOnly=false&format=pdf
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — Alertes (XLSX)
+GET {{reportingUrl}}/api/reports/alerts?activeOnly=false&format=xlsx
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — PV d'inventaire (PDF)
+GET {{reportingUrl}}/api/reports/inventories/{{inventoryId}}?format=pdf
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — PV d'inventaire (XLSX)
+GET {{reportingUrl}}/api/reports/inventories/{{inventoryId}}?format=xlsx
+Authorization: Bearer {{token}}
+
+### 7. Rapports & tableau de bord — Indicateurs du tableau de bord (30 j)
+GET {{reportingUrl}}/api/reports/analytics?days=30
+Authorization: Bearer {{token}}
+
+### 8. Cas d'erreur (sécurité & règles) — Sans jeton -> 401
+GET {{productUrl}}/api/products
+
+### 8. Cas d'erreur (sécurité & règles) — Mauvais mot de passe -> 401
+POST {{authUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "mauvais"
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Magasinier crée un produit -> 403
+POST {{productUrl}}/api/products
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "reference": "X-{{run}}",
+  "name": "Interdit",
+  "categoryId": {{categoryId}},
+  "minStock": 0
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Consultant fait une sortie -> 403
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenConsultant}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "OUT",
+  "quantity": 1
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Sortie > stock -> 409 INSUFFICIENT_STOCK
+POST {{stockUrl}}/api/stock/movements
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "type": "OUT",
+  "quantity": 999999
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Référence en double -> 409
+POST {{productUrl}}/api/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "PAP-{{run}}",
+  "name": "Doublon",
+  "categoryId": {{categoryId}},
+  "minStock": 0
+}
+
+### 8. Cas d'erreur (sécurité & règles) — EAN-13 invalide -> 400
+POST {{productUrl}}/api/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "EAN-{{run}}",
+  "name": "Mauvais code",
+  "categoryId": {{categoryId}},
+  "barcode": "4006381333932",
+  "minStock": 0
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Fournisseur inexistant -> 409
+POST {{productUrl}}/api/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reference": "SUP-{{run}}",
+  "name": "X",
+  "categoryId": {{categoryId}},
+  "minStock": 0,
+  "supplierId": 999999
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Validation des champs -> 400
+POST {{authUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "x",
+  "email": "pas-un-email",
+  "fullName": "",
+  "password": "1",
+  "roles": []
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Inventaire validé non modifiable -> 409
+PUT {{stockUrl}}/api/stock/inventories/{{inventoryId}}/counts
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "productId": {{productId}},
+  "countedQuantity": 1
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Suppression catégorie non vide -> 409
+DELETE {{productUrl}}/api/categories/{{categoryId}}
+Authorization: Bearer {{token}}
+
+### 8. Cas d'erreur (sécurité & règles) — Magasinier change la devise -> 403
+PUT {{authUrl}}/api/settings
+Authorization: Bearer {{tokenMagasinier}}
+Content-Type: application/json
+
+{
+  "currency": "EUR"
+}
+
+### 8. Cas d'erreur (sécurité & règles) — ICE marocain invalide -> 400
+POST {{supplierUrl}}/api/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "BAD{{run}}",
+  "name": "X",
+  "country": "MA",
+  "taxId": "12AB"
+}
+
+### 8. Cas d'erreur (sécurité & règles) — Revenir au dirham (MAD)
+PUT {{authUrl}}/api/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currency": "MAD"
+}

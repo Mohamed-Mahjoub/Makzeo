@@ -1,0 +1,238 @@
+<div class="page-header">
+  <div>
+    <h1>Tableau de bord</h1>
+    @if (data(); as d) {
+      <p class="muted">Période du {{ d.from | date: 'dd/MM/yyyy' }} au {{ d.to | date: 'dd/MM/yyyy' }}
+        — mis à jour à {{ d.generatedAt | date: 'HH:mm' }}</p>
+    }
+  </div>
+  <div class="page-header__actions filters">
+    <div class="segmented" role="group" aria-label="Période">
+      @for (p of periods; track p) {
+        <button type="button" [class.is-active]="days() === p" (click)="setPeriod(p)">{{ p }} j</button>
+      }
+    </div>
+    <select class="select" [ngModel]="categoryId()" (ngModelChange)="setCategory($event)" aria-label="Catégorie">
+      <option [ngValue]="null">Toutes les catégories</option>
+      @for (c of categories(); track c.id) {
+        <option [ngValue]="c.id">{{ c.name }}</option>
+      }
+    </select>
+    <button type="button" class="btn btn--ghost" (click)="load()" [disabled]="loading()" title="Actualiser">
+      <app-icon name="refresh" [size]="16" />
+    </button>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button type="button" [class.is-active]="tab() === 'status'" (click)="tab.set('status')">
+    <app-icon name="layers" [size]="16" /> État des stocks</button>
+  <button type="button" [class.is-active]="tab() === 'replenishment'" (click)="tab.set('replenishment')">
+    <app-icon name="cart" [size]="16" /> Réapprovisionnement
+    @if (data(); as d) { @if (d.kpis.productsToReorder > 0) { <span class="tabs__count">{{ d.kpis.productsToReorder }}</span> } }
+  </button>
+  <button type="button" [class.is-active]="tab() === 'valuation'" (click)="tab.set('valuation')">
+    <app-icon name="coins" [size]="16" /> Valorisation</button>
+</nav>
+
+@if (error()) {
+  <div class="card card--error">{{ error() }}</div>
+}
+
+@if (data(); as d) {
+  <div [class.is-loading]="loading()">
+
+  <!-- =============== VUE 1 : ÉTAT DES STOCKS =============== -->
+  @if (tab() === 'status') {
+    <div class="kpi-grid">
+      <app-kpi-card label="Produits actifs" [value]="num(d.kpis.productCount)" icon="box"
+                    [hint]="num(d.kpis.totalQuantity) + ' unités en stock'" />
+      <app-kpi-card label="Ruptures de stock" [value]="d.kpis.outOfStock" icon="alert"
+                    [tone]="d.kpis.outOfStock > 0 ? 'danger' : 'success'" hint="Produits à zéro" />
+      <app-kpi-card label="Sous le seuil minimum" [value]="d.kpis.lowStock" icon="bell"
+                    [tone]="d.kpis.lowStock > 0 ? 'warning' : 'success'" hint="À réapprovisionner" />
+      <app-kpi-card label="Alertes actives" [value]="d.kpis.activeAlerts" icon="bell"
+                    [tone]="d.kpis.activeAlerts > 0 ? 'warning' : 'default'" />
+      <app-kpi-card label="Entrées (période)" [value]="num(d.kpis.entriesQuantity)" icon="arrowIn" tone="info"
+                    hint="unités reçues" />
+      <app-kpi-card label="Sorties (période)" [value]="num(d.kpis.exitsQuantity)" icon="arrowOut"
+                    [hint]="num(d.kpis.movementCount) + ' mouvements'" />
+    </div>
+
+    <div class="grid grid--3-1">
+      <section class="card">
+        <div class="card__title">
+          <h3>Évolution des entrées et des sorties</h3>
+          <span class="muted">Quantités par jour</span>
+        </div>
+        <app-time-series-chart [labels]="flowLabels()" [series]="flowSeries()" ariaLabel="Entrées et sorties par jour" />
+      </section>
+      <section class="card">
+        <div class="card__title"><h3>État des produits</h3></div>
+        <app-donut-chart [slices]="statusSlices()" centerLabel="produits" />
+      </section>
+    </div>
+
+    <div class="grid grid--2">
+      <section class="card">
+        <div class="card__title">
+          <h3>Produits les plus consommés</h3>
+          <span class="muted">Sorties sur {{ d.periodDays }} jours</span>
+        </div>
+        <app-bar-list-chart [items]="topConsumed()" [color]="'#2563eb'" />
+      </section>
+      <section class="card">
+        <div class="card__title">
+          <h3>Alertes actives</h3>
+          <a routerLink="/alerts" class="link">Tout voir</a>
+        </div>
+        <ul class="alert-list">
+          @for (a of alerts(); track a.id) {
+            <li>
+              <span class="badge" [class.badge--danger]="a.type === 'RUPTURE'" [class.badge--warning]="a.type === 'SEUIL_MIN'">
+                {{ a.typeLabel }}</span>
+              <div>
+                <strong>{{ a.productName }}</strong>
+                <small class="muted">{{ a.productReference }} — stock {{ a.quantity }} / seuil {{ a.threshold }}</small>
+              </div>
+              <time class="muted">{{ a.createdAt | date: 'dd/MM HH:mm' }}</time>
+            </li>
+          } @empty {
+            <li class="muted">Aucune alerte active 🎉</li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+
+  <!-- =============== VUE 2 : RÉAPPROVISIONNEMENT =============== -->
+  @if (tab() === 'replenishment') {
+    <div class="kpi-grid kpi-grid--4">
+      <app-kpi-card label="Produits à commander" [value]="d.kpis.productsToReorder" icon="cart"
+                    [tone]="d.kpis.productsToReorder > 0 ? 'warning' : 'success'" />
+      <app-kpi-card label="Montant des commandes suggérées" [value]="moneyRounded(d.kpis.reorderValue)" icon="coins"
+                    tone="info" hint="au prix d'achat" />
+      <app-kpi-card label="Couverture globale" [value]="d.kpis.coverageDays === null ? '—' : num(d.kpis.coverageDays) + ' j'"
+                    icon="clock" hint="stock / sorties moyennes par jour" />
+      <app-kpi-card label="Ventes perdues estimées" [value]="moneyRounded(d.kpis.lostSalesPerDay) + ' / j'" icon="alert"
+                    [tone]="d.kpis.lostSalesPerDay > 0 ? 'danger' : 'success'" hint="produits en rupture" />
+    </div>
+
+    <section class="card">
+      <div class="card__title">
+        <h3>Prévision de réapprovisionnement</h3>
+        <div class="chips">
+          <button type="button" class="chip" [class.is-active]="priorityFilter() === 'TO_ORDER'" (click)="priorityFilter.set('TO_ORDER')">
+            À commander ({{ d.kpis.productsToReorder }})</button>
+          <button type="button" class="chip chip--danger" [class.is-active]="priorityFilter() === 'CRITIQUE'" (click)="priorityFilter.set('CRITIQUE')">
+            Critique ({{ priorityCounts().CRITIQUE }})</button>
+          <button type="button" class="chip chip--warning" [class.is-active]="priorityFilter() === 'HAUTE'" (click)="priorityFilter.set('HAUTE')">
+            Haute ({{ priorityCounts().HAUTE }})</button>
+          <button type="button" class="chip chip--info" [class.is-active]="priorityFilter() === 'MOYENNE'" (click)="priorityFilter.set('MOYENNE')">
+            Moyenne ({{ priorityCounts().MOYENNE }})</button>
+          <button type="button" class="chip" [class.is-active]="priorityFilter() === 'ALL'" (click)="priorityFilter.set('ALL')">
+            Tous</button>
+        </div>
+      </div>
+      <p class="muted small">Consommation moyenne calculée sur les {{ d.periodDays }} derniers jours. Quantité suggérée :
+        retour au stock maximum (ou 30 jours de consommation).</p>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Priorité</th><th>Produit</th><th>Catégorie</th><th class="num">Stock</th><th class="num">Seuil</th>
+              <th class="num">Conso. / jour</th><th>Couverture</th><th>Rupture estimée</th>
+              <th class="num">Qté suggérée</th><th class="num">Montant</th>
+              @if (auth.canMoveStock()) { <th></th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of replenishment(); track r.productId) {
+              <tr>
+                <td><span class="badge" [class]="'badge ' + priorityClass(r.priority)">{{ r.priority }}</span></td>
+                <td><strong>{{ r.name }}</strong><br /><small class="muted">{{ r.reference }}</small></td>
+                <td>{{ r.category }}</td>
+                <td class="num" [class.text-danger]="r.quantity === 0">{{ r.quantity }}</td>
+                <td class="num">{{ r.minStock }}</td>
+                <td class="num">{{ num(r.avgDailyExits) }}</td>
+                <td>
+                  <div class="gauge" [title]="r.coverageDays === null ? 'Pas de consommation' : r.coverageDays + ' jours'">
+                    <div class="gauge__fill" [style.width.%]="coverageWidth(r)"
+                         [class.gauge__fill--danger]="r.priority === 'CRITIQUE' || r.priority === 'HAUTE'"
+                         [class.gauge__fill--warning]="r.priority === 'MOYENNE'"></div>
+                  </div>
+                  <small>{{ r.coverageDays === null ? '∞' : num(r.coverageDays) + ' j' }}</small>
+                </td>
+                <td>{{ r.estimatedRuptureDate ? (r.estimatedRuptureDate | date: 'dd/MM/yyyy') : '—' }}</td>
+                <td class="num"><strong>{{ r.suggestedQuantity || '—' }}</strong></td>
+                <td class="num">{{ r.suggestedValue ? money(r.suggestedValue) : '—' }}</td>
+                @if (auth.canMoveStock()) {
+                  <td>
+                    @if (r.suggestedQuantity > 0) {
+                      <button type="button" class="btn btn--sm btn--ghost" (click)="restock(r)" title="Enregistrer une entrée">
+                        <app-icon name="arrowIn" [size]="14" /> Entrée</button>
+                    }
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr><td colspan="11" class="muted center">Aucun produit dans cette catégorie de priorité.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <!-- =============== VUE 3 : VALORISATION =============== -->
+  @if (tab() === 'valuation') {
+    <div class="kpi-grid kpi-grid--4">
+      <app-kpi-card label="Valeur totale du stock" [value]="moneyRounded(d.kpis.stockValue)" icon="coins" tone="info"
+                    hint="au prix d'achat" />
+      <app-kpi-card label="Taux de rotation" [value]="num(d.kpis.rotationRate)" icon="refresh"
+                    [hint]="'sorties / stock sur ' + d.periodDays + ' j'" />
+      <app-kpi-card label="Couverture globale" [value]="d.kpis.coverageDays === null ? '—' : num(d.kpis.coverageDays) + ' j'"
+                    icon="clock" />
+      <app-kpi-card label="Impact des ruptures" [value]="moneyRounded(d.kpis.lostSalesPerDay) + ' / j'" icon="alert"
+                    [tone]="d.kpis.lostSalesPerDay > 0 ? 'danger' : 'success'" hint="CA potentiellement perdu" />
+    </div>
+
+    <div class="grid grid--2">
+      <section class="card">
+        <div class="card__title"><h3>Répartition de la valeur par catégorie</h3></div>
+        <app-donut-chart [slices]="categorySlices()" [centerLabel]="d.currency" />
+      </section>
+      <section class="card">
+        <div class="card__title"><h3>Top 10 des produits par valeur</h3></div>
+        <app-bar-list-chart [items]="topValue()" [color]="'#0d9488'" />
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card__title"><h3>Valeur du stock par catégorie</h3></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Catégorie</th><th class="num">Produits</th><th class="num">Quantité</th>
+            <th class="num">Valeur</th><th>Part</th></tr></thead>
+          <tbody>
+            @for (c of categoryShare(); track c.category) {
+              <tr>
+                <td>{{ c.category }}</td>
+                <td class="num">{{ c.productCount }}</td>
+                <td class="num">{{ num(c.quantity) }}</td>
+                <td class="num"><strong>{{ money(c.value) }}</strong></td>
+                <td><div class="gauge gauge--inline"><div class="gauge__fill" [style.width.%]="c.share"></div></div>
+                  <small>{{ c.share }} %</small></td>
+              </tr>
+            }
+          </tbody>
+          <tfoot><tr><td>Total</td><td class="num">{{ d.kpis.productCount }}</td>
+            <td class="num">{{ num(d.kpis.totalQuantity) }}</td><td class="num">{{ money(d.kpis.stockValue) }}</td><td></td></tr></tfoot>
+        </table>
+      </div>
+    </section>
+  }
+  </div>
+} @else if (loading()) {
+  <div class="card center muted">Chargement du tableau de bord…</div>
+}

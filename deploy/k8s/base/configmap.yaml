@@ -1,0 +1,15 @@
+# Configuration non sensible partagée par les microservices
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  CORS_ALLOWED_ORIGINS: "http://stock.local"
+  APP_ZONE: Africa/Casablanca
+  # Découverte de services : DNS interne Kubernetes (nom du Service)
+  SUPPLIER_SERVICE_URL: http://supplier-service:8083
+  PRODUCT_SERVICE_URL: http://product-service:8082
+  STOCK_SERVICE_URL: http://stock-service:8084
+  AUTH_SERVICE_URL: http://auth-service:8081

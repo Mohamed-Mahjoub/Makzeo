@@ -1,0 +1,16 @@
+# Backend
+target/
+*.class
+# Frontend
+node_modules/
+dist/
+.angular/
+# Outils
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.log
+# Secrets locaux
+.env
+age.agekey

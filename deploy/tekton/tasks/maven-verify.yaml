@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: maven-verify
+  namespace: stock-ci
+spec:
+  description: Compile les microservices et exécute les tests unitaires et web (mvn verify).
+  params:
+    - name: project-dir
+      type: string
+      default: backend
+  workspaces:
+    - name: source
+    - name: maven-repo
+      optional: true
+      description: Cache du dépôt Maven local (~/.m2/repository)
+  steps:
+    - name: verify
+      image: maven:3.9-eclipse-temurin-21
+      workingDir: $(workspaces.source.path)/$(params.project-dir)
+      computeResources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          memory: 2Gi
+      script: |
+        #!/bin/sh
+        set -eu
+        REPO=""
+        if [ "$(workspaces.maven-repo.bound)" = "true" ]; then
+          REPO="-Dmaven.repo.local=$(workspaces.maven-repo.path)"
+        fi
+        mvn -B -ntp $REPO clean verify
+        echo "Rapports de tests : $(find . -path '*surefire-reports/*.xml' | wc -l) fichier(s)"

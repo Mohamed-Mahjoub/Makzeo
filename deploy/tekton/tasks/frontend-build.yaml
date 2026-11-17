@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: frontend-build
+  namespace: stock-ci
+spec:
+  description: Installe les dépendances npm et compile l'application Angular (build de production).
+  params:
+    - name: project-dir
+      type: string
+      default: frontend
+  workspaces:
+    - name: source
+  steps:
+    - name: build
+      image: node:22-alpine
+      workingDir: $(workspaces.source.path)/$(params.project-dir)
+      computeResources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          memory: 3Gi
+      script: |
+        #!/bin/sh
+        set -eu
+        if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+        npx ng build --configuration production
+        ls -la dist/stock-management-frontend/browser

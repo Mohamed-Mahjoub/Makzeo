@@ -1,0 +1,20 @@
+# Base Kustomize commune à tous les environnements
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: stock-management
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: stock-management
+    includeSelectors: false
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - network-policy.yaml
+  - auth-service.yaml
+  - product-service.yaml
+  - supplier-service.yaml
+  - stock-service.yaml
+  - reporting-service.yaml
+  - frontend.yaml
+  - ingress.yaml

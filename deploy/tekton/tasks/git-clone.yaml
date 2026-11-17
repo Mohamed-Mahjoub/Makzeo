@@ -1,0 +1,52 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: stock-ci
+spec:
+  description: Clone le dépôt Git à la révision demandée et publie le SHA du commit.
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: main
+  results:
+    - name: commit
+      description: SHA complet du commit
+    - name: short-commit
+      description: SHA court (8 caractères), utilisé comme tag d'image
+  workspaces:
+    - name: output
+  steps:
+    - name: clone
+      image: alpine/git:latest
+      env:
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+        - name: GIT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: token
+              optional: true
+      script: |
+        #!/bin/sh
+        set -eu
+        URL="$(params.url)"
+        if [ -n "${GIT_TOKEN:-}" ]; then
+          URL="https://${GIT_USERNAME}:${GIT_TOKEN}@${URL#https://}"
+        fi
+        cd "$(workspaces.output.path)"
+        find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        git clone --quiet "$URL" .
+        git checkout --quiet "$(params.revision)"
+        SHA="$(git rev-parse HEAD)"
+        printf "%s" "$SHA" > "$(results.commit.path)"
+        printf "%s" "$(echo "$SHA" | cut -c1-8)" > "$(results.short-commit.path)"
+        echo "Commit : $SHA"
+        git log -1 --oneline

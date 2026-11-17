@@ -1,0 +1,234 @@
+# =============================================================================
+# Makzeo - pipeline CI/CD Azure DevOps
+#   Build   : tests backend (Maven), build Angular, contrôle des manifestes
+#   Docker  : 6 images construites avec les Dockerfiles existants, poussées dans ACR
+#   Deploy  : déploiement sur AKS avec l'overlay Kustomize deploy/k8s/overlays/azure
+#   Smoke   : test de bout en bout (backend/scripts/e2e_test.py) via l'Ingress
+#
+# A créer avant le premier lancement (voir le guide) :
+#   - connexion de service "makzeo-acr"   (Docker Registry -> Azure Container Registry)
+#   - connexion de service "makzeo-azure" (Azure Resource Manager)
+#   - groupe de variables  "makzeo-secrets" : JWT_SECRET, POSTGRES_PASSWORD, ADMIN_PASSWORD (secrets)
+#   - environnement        "makzeo-prod"   (approbation facultative)
+# =============================================================================
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    exclude: ['**/*.md']
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: makzeo-secrets
+  # --- à adapter -------------------------------------------------------------
+  - name: acrServiceConnection
+    value: makzeo-acr
+  - name: azureServiceConnection
+    value: makzeo-azure
+  - name: acrLoginServer
+    value: makzeoacr.azurecr.io
+  - name: resourceGroup
+    value: rg-makzeo
+  - name: aksCluster
+    value: aks-makzeo
+  - name: appUrl
+    value: http://makzeo.20.0.0.1.nip.io
+  # ---------------------------------------------------------------------------
+  - name: imageTag
+    value: $(Build.BuildId)
+  - name: MAVEN_CACHE_FOLDER
+    value: $(Pipeline.Workspace)/.m2/repository
+
+stages:
+  # ---------------------------------------------------------------------------
+  - stage: Build
+    displayName: Build et tests
+    jobs:
+      - job: Backend
+        displayName: Backend - mvn verify
+        steps:
+          - task: Cache@2
+            displayName: Cache Maven
+            inputs:
+              key: 'maven | "$(Agent.OS)" | backend/**/pom.xml'
+              restoreKeys: |
+                maven | "$(Agent.OS)"
+              path: $(MAVEN_CACHE_FOLDER)
+
+          - script: |
+              export JAVA_HOME="$JAVA_HOME_21_X64"
+              java -version
+              mvn -B -ntp verify -Dmaven.repo.local="$(MAVEN_CACHE_FOLDER)"
+            workingDirectory: backend
+            displayName: Compiler et tester (JUnit)
+
+          - task: PublishTestResults@2
+            displayName: Publier les résultats de tests
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: 'backend/**/target/surefire-reports/TEST-*.xml'
+              testRunTitle: Backend JUnit
+              failTaskOnFailedTests: true
+
+      - job: Frontend
+        displayName: Frontend - ng build
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '22.x'
+          - script: |
+              if [ -f package-lock.json ]; then npm ci; else npm install; fi
+              npx ng build --configuration production
+            workingDirectory: frontend
+            displayName: Installer et compiler Angular
+
+      - job: Manifests
+        displayName: Manifestes Kubernetes
+        steps:
+          - script: |
+              pip install --quiet pyyaml
+              python3 scripts/validate_manifests.py
+            displayName: validate_manifests.py
+          - script: kubectl kustomize deploy/k8s/overlays/azure > /dev/null
+            displayName: Rendu de l'overlay azure
+
+  # ---------------------------------------------------------------------------
+  - stage: Docker
+    displayName: Images Docker -> ACR
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: Images
+        displayName: Construire et pousser
+        strategy:
+          maxParallel: 3
+          matrix:
+            auth:
+              imageName: stock-auth-service
+              buildContext: backend
+              dockerfile: backend/Dockerfile
+              buildArgs: --build-arg SERVICE=auth-service
+            product:
+              imageName: stock-product-service
+              buildContext: backend
+              dockerfile: backend/Dockerfile
+              buildArgs: --build-arg SERVICE=product-service
+            supplier:
+              imageName: stock-supplier-service
+              buildContext: backend
+              dockerfile: backend/Dockerfile
+              buildArgs: --build-arg SERVICE=supplier-service
+            stock:
+              imageName: stock-stock-service
+              buildContext: backend
+              dockerfile: backend/Dockerfile
+              buildArgs: --build-arg SERVICE=stock-service
+            reporting:
+              imageName: stock-reporting-service
+              buildContext: backend
+              dockerfile: backend/Dockerfile
+              buildArgs: --build-arg SERVICE=reporting-service
+            frontend:
+              imageName: stock-frontend
+              buildContext: frontend
+              dockerfile: frontend/Dockerfile
+              buildArgs: ''
+        steps:
+          - task: Docker@2
+            displayName: Build $(imageName)
+            inputs:
+              command: build
+              containerRegistry: ${{ variables.acrServiceConnection }}
+              repository: $(imageName)
+              Dockerfile: $(dockerfile)
+              buildContext: $(buildContext)
+              arguments: $(buildArgs)
+              tags: |
+                $(imageTag)
+                latest
+          - task: Docker@2
+            displayName: Push $(imageName)
+            inputs:
+              command: push
+              containerRegistry: ${{ variables.acrServiceConnection }}
+              repository: $(imageName)
+              tags: |
+                $(imageTag)
+                latest
+
+  # ---------------------------------------------------------------------------
+  - stage: Deploy
+    displayName: Déploiement AKS
+    dependsOn: Docker
+    condition: succeeded()
+    jobs:
+      - deployment: AKS
+        displayName: kubectl apply -k overlays/azure
+        environment: makzeo-prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Déployer sur AKS
+                  inputs:
+                    azureSubscription: ${{ variables.azureServiceConnection }}
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      az aks get-credentials -g "$(resourceGroup)" -n "$(aksCluster)" --overwrite-existing
+
+                      # 1. Namespace + Secret (valeurs du groupe de variables, jamais dans Git)
+                      kubectl create namespace stock-management --dry-run=client -o yaml | kubectl apply -f -
+                      kubectl -n stock-management create secret generic stock-secrets \
+                        --from-literal=POSTGRES_USER=postgres \
+                        --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+                        --from-literal=JWT_SECRET="$JWT_SECRET" \
+                        --from-literal=ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+                        --dry-run=client -o yaml | kubectl apply -f -
+
+                      # 2. Images du build courant
+                      cd deploy/k8s/overlays/azure
+                      if ! command -v kustomize >/dev/null; then
+                        curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+                        export PATH="$PWD:$PATH"
+                      fi
+                      for s in auth-service product-service supplier-service stock-service reporting-service frontend; do
+                        kustomize edit set image "stock-management/$s=$(acrLoginServer)/stock-$s:$(imageTag)"
+                      done
+
+                      # 3. Application des manifestes et attente des rollouts
+                      kubectl apply -k .
+                      kubectl -n stock-management rollout status statefulset/postgres --timeout=300s
+                      for d in auth-service product-service supplier-service stock-service reporting-service frontend; do
+                        kubectl -n stock-management rollout status "deployment/$d" --timeout=420s
+                      done
+                      kubectl -n stock-management get pods -o wide
+                  env:
+                    JWT_SECRET: $(JWT_SECRET)
+                    POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)
+                    ADMIN_PASSWORD: $(ADMIN_PASSWORD)
+
+  # ---------------------------------------------------------------------------
+  - stage: Smoke
+    displayName: Test de bout en bout
+    dependsOn: Deploy
+    condition: succeeded()
+    jobs:
+      - job: E2E
+        steps:
+          - script: |
+              python3 backend/scripts/e2e_test.py --gateway "$(appUrl)" --admin-password "$ADMIN_PASSWORD"
+            displayName: e2e_test.py via l'Ingress
+            env:
+              ADMIN_PASSWORD: $(ADMIN_PASSWORD)
