@@ -1,8 +1,5 @@
 # Makzeo — Gestion de produits et de stock
 
-> **Makzeo** vient de l'arabe *makhzen* (مخزن, « entrepôt »), le mot qui a donné le français « magasin »
-> et l'anglais « magazine ».
-
 Projet de fin d'études : **architecture microservices** + **approche DevOps**
 (Docker, Kubernetes, CI/CD Tekton, GitOps FluxCD).
 
