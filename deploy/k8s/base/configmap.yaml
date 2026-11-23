@@ -8,6 +8,8 @@ data:
   DB_PORT: "5432"
   CORS_ALLOWED_ORIGINS: "http://stock.local"
   APP_ZONE: Africa/Casablanca
+  # Swagger UI et /v3/api-docs désactivés dans le cluster (activables pour une démonstration)
+  SWAGGER_ENABLED: "false"
   # Découverte de services : DNS interne Kubernetes (nom du Service)
   SUPPLIER_SERVICE_URL: http://supplier-service:8083
   PRODUCT_SERVICE_URL: http://product-service:8082

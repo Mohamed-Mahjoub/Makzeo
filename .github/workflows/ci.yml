@@ -1,0 +1,64 @@
+# Intégration continue GitHub : compilation, tests et contrôles à chaque push et pull request.
+# Le déploiement reste assuré par Azure DevOps (azure-pipelines.yml) sur le cluster on-premise.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend - tests et couverture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: mvn verify
+        run: mvn -B -ntp -f backend/pom.xml -Pcoverage verify
+      - name: Rapports de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/**/target/surefire-reports/
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend - build de production
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx ng build --configuration production
+
+  manifests:
+    name: Manifestes Kubernetes et pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kustomize
+        run: |
+          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz | tar xz
+          sudo mv kustomize /usr/local/bin/
+      - run: pip install pyyaml
+      - run: python3 scripts/validate_manifests.py

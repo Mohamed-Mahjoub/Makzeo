@@ -13,10 +13,10 @@
 
     <groupId>ma.pfe.stock</groupId>
     <artifactId>stock-management-backend</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Stock Management - Backend (microservices)</name>
-    <description>Application de gestion de produits et de stock basée sur une architecture microservices</description>
+    <name>Makzeo - Backend</name>
+    <description>Makzeo : gestion des produits et des stocks, architecture microservices</description>
 
     <modules>
         <module>common-lib</module>
@@ -33,6 +33,12 @@
         <poi.version>5.3.0</poi.version>
         <openpdf.version>2.0.3</openpdf.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <!-- Dépôt Nexus : surchargé en intégration continue (-Dnexus.url=...) -->
+        <nexus.url>http://localhost:8081</nexus.url>
+        <!-- Analyse SonarQube : rapports de couverture JaCoCo et exclusions -->
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.exclusions>**/*Application.java,**/infrastructure/persistence/*Entity.java</sonar.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -61,6 +67,19 @@
         </dependencies>
     </dependencyManagement>
 
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <name>Nexus - releases</name>
+            <url>${nexus.url}/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <name>Nexus - snapshots</name>
+            <url>${nexus.url}/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -74,4 +93,35 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <!-- Couverture de code, activée en intégration continue : mvn verify -Pcoverage -->
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.version}</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

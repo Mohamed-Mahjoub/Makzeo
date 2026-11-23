@@ -1,9 +1,0 @@
-# Point d'entrée FluxCD (à référencer depuis le dépôt de bootstrap, ou à appliquer une fois) :
-#   kubectl apply -k deploy/flux
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - gitrepository.yaml
-  - kustomization-app.yaml
-  - kustomization-ci.yaml
-  # - notifications.yaml   # optionnel

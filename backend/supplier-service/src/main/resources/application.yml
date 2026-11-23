@@ -8,7 +8,8 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:supplier_db}
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    # aucun mot de passe par défaut : DB_PASSWORD est obligatoire
+    password: ${DB_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:
@@ -23,7 +24,8 @@ spring:
 
 app:
   security:
-    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
+    # aucune clé par défaut : JWT_SECRET est obligatoire (32 caractères minimum, identique pour les 5 services)
+    jwt-secret: ${JWT_SECRET}
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   openapi:
     description: "Gestion des fournisseurs."
@@ -31,8 +33,11 @@ app:
 # Documentation OpenAPI 3 / Swagger UI (springdoc)
 springdoc:
   api-docs:
+    # désactivé en production (SWAGGER_ENABLED=false dans Kubernetes)
+    enabled: ${SWAGGER_ENABLED:true}
     path: /v3/api-docs
   swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
@@ -44,14 +49,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
   info:
     env:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 info:
   app:

@@ -6,7 +6,7 @@
     <parent>
         <groupId>ma.pfe.stock</groupId>
         <artifactId>stock-management-backend</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>common-lib</artifactId>
@@ -34,6 +34,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Exposition des métriques au format Prometheus (/actuator/prometheus) -->
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <!-- Swagger UI : http://localhost:<port>/swagger-ui.html -->

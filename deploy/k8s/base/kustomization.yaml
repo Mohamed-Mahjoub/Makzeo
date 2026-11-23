@@ -18,3 +18,4 @@ resources:
   - reporting-service.yaml
   - frontend.yaml
   - ingress.yaml
+  - ingress-login.yaml

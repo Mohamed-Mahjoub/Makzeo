@@ -16,6 +16,7 @@ Si la commande SQL échoue, le script affiche la requête à exécuter dans pgAd
 Bibliothèque standard uniquement.
 """
 import argparse
+import os
 import json
 import random
 import shlex
@@ -169,9 +170,12 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gateway", help="URL de la passerelle (sinon ports 8081-8084 en direct)")
-    parser.add_argument("--admin-password", default="Admin@12345")
+    parser.add_argument("--admin-password", default=os.environ.get("ADMIN_PASSWORD"),
+                        help="mot de passe du compte admin (par défaut : variable d'environnement ADMIN_PASSWORD)")
     parser.add_argument("--sql-cmd", default="docker exec -i stock-postgres psql -U postgres -d stock_db",
                         help="commande psql vers stock_db")
     ARGS = parser.parse_args()
+    if not ARGS.admin_password:
+        parser.error("mot de passe admin manquant : --admin-password <mdp> ou variable d'environnement ADMIN_PASSWORD")
     TOKEN = None
     main()
