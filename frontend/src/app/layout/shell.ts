@@ -50,6 +50,14 @@ export class Shell {
       { path: '/categories', label: 'Catégories', icon: 'tag' },
       { path: '/suppliers', label: 'Fournisseurs', icon: 'truck' }
     ] },
+    { title: 'Achats IA', items: [
+      { path: '/achats', label: 'Tableau de bord achats', icon: 'coins', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] },
+      { path: '/achats/recommandations', label: 'Recommandations', icon: 'cart', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] },
+      { path: '/achats/prix', label: 'Prédiction des prix', icon: 'trend', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] },
+      { path: '/achats/devis', label: 'Comparaison des offres', icon: 'swap', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] },
+      { path: '/achats/demandes', label: 'Demandes de prix', icon: 'file', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] },
+      { path: '/achats/fournisseurs', label: 'Fournisseurs du marché', icon: 'globe', roles: ['ADMIN', 'GESTIONNAIRE', 'CONSULTANT'] }
+    ] },
     { title: 'Administration', items: [
       { path: '/users', label: 'Utilisateurs', icon: 'users', roles: ['ADMIN'] },
       { path: '/settings', label: 'Paramètres', icon: 'settings' }

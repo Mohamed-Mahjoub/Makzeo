@@ -12,7 +12,7 @@
       @for (section of menu(); track section.title) {
         <div class="sidebar__section">{{ section.title }}</div>
         @for (item of section.items; track item.path) {
-          <a class="sidebar__link" [routerLink]="item.path" routerLinkActive="is-active" [title]="item.label">
+          <a class="sidebar__link" [routerLink]="item.path" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: item.path === '/achats' }" [title]="item.label">
             <app-icon [name]="item.icon" />
             <span>{{ item.label }}</span>
           </a>

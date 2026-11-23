@@ -4,7 +4,7 @@
 #   1. Build         compilation, tests unitaires, couverture JaCoCo, analyse SonarQube
 #                    (Quality Gate bloquante), publication des artefacts Maven dans Nexus,
 #                    compilation Angular, analyse des dépendances (Trivy), contrôle des manifestes
-#   2. Images        6 images Docker construites à partir des artefacts testés,
+#   2. Images        7 images Docker construites à partir des artefacts testés,
 #                    analyse de vulnérabilités (Trivy), publication dans le registre Nexus
 #   3. Deploy        déploiement Kubernetes (cluster kubeadm VMware) après approbation
 #   4. Smoke         test de bout en bout à travers l'Ingress
@@ -15,6 +15,7 @@
 #   pool d'agents      Makzeo-OnPrem         agent auto-hébergé sur le master (outils DevOps)
 #   groupe de variables makzeo-secrets       JWT_SECRET, POSTGRES_PASSWORD, ADMIN_PASSWORD,
 #                                            NEXUS_CI_PASSWORD, SONAR_TOKEN (secrets)
+#                                            facultatifs : AI_API_KEY, SMTP_USERNAME, SMTP_PASSWORD
 #   fichier sécurisé   makzeo-kubeconfig     kubeconfig du compte de service ci-deployer
 #   environnement      makzeo-onprem         approbation avant déploiement
 # =============================================================================
@@ -59,7 +60,7 @@ variables:
   - name: sonarMavenPlugin
     value: org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751
   - name: services
-    value: auth-service product-service supplier-service stock-service reporting-service
+    value: auth-service product-service supplier-service stock-service reporting-service procurement-service
 
 stages:
   # ===========================================================================
@@ -238,7 +239,7 @@ stages:
                 build_scan_push "${svc}" backend/Dockerfile.runtime "$(artifactsDir)/${svc}" "${svc}"
               done
               build_scan_push frontend frontend/Dockerfile.runtime "$(artifactsDir)/frontend" frontend
-            displayName: Construction, analyse et publication des 6 images
+            displayName: Construction, analyse et publication des 7 images
 
           - script: docker logout "${NEXUS_REGISTRY}"
             displayName: Déconnexion du registre
@@ -277,11 +278,21 @@ stages:
                     kubectl get namespace stock-management
 
                     echo "==> Secrets (valeurs du groupe makzeo-secrets, jamais stockées dans Git)"
+                    # Secrets facultatifs du module achats : ajoutés seulement s'ils sont définis dans le groupe
+                    # (une variable absente du groupe arrive sous la forme littérale "$(NOM)")
+                    optional=()
+                    for var in AI_API_KEY SMTP_USERNAME SMTP_PASSWORD; do
+                      value="${!var:-}"
+                      if [ -n "$value" ] && [[ "$value" != '$('* ]]; then
+                        optional+=(--from-literal="${var}=${value}")
+                      fi
+                    done
                     kubectl -n stock-management create secret generic stock-secrets \
                       --from-literal=POSTGRES_USER=postgres \
                       --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
                       --from-literal=JWT_SECRET="${JWT_SECRET}" \
                       --from-literal=ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+                      "${optional[@]}" \
                       --dry-run=client -o yaml | kubectl apply -f -
                     kubectl -n stock-management create secret docker-registry nexus-registry \
                       --docker-server="${NEXUS_REGISTRY}" \
@@ -312,6 +323,9 @@ stages:
                     JWT_SECRET: $(JWT_SECRET)
                     ADMIN_PASSWORD: $(ADMIN_PASSWORD)
                     NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
+                    AI_API_KEY: $(AI_API_KEY)
+                    SMTP_USERNAME: $(SMTP_USERNAME)
+                    SMTP_PASSWORD: $(SMTP_PASSWORD)
 
                 - task: PublishPipelineArtifact@1
                   displayName: Archivage des manifestes appliqués

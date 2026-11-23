@@ -15,3 +15,11 @@ data:
   PRODUCT_SERVICE_URL: http://product-service:8082
   STOCK_SERVICE_URL: http://stock-service:8084
   AUTH_SERVICE_URL: http://auth-service:8081
+  # Module IA achats
+  PROCUREMENT_ZONE: Africa/Tunis
+  APP_URL: "http://stock.local"
+  PROCUREMENT_BUYER_EMAIL: achats@makzeo.local
+  PROCUREMENT_MANAGER_EMAILS: responsable.achats@makzeo.local
+  # Serveur SMTP : Mailpit (démonstration) ; à remplacer par le serveur de l'entreprise
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"

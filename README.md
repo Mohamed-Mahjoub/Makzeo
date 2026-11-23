@@ -11,6 +11,7 @@ chaîne DevOps complète (Azure DevOps, SonarQube, Nexus, Docker, Kubernetes, Pr
 | Fournisseurs | Fiches fournisseurs, pays, rattachement aux produits |
 | Stocks | Entrées, sorties, ajustements, niveaux par produit, alertes de rupture, inventaires |
 | Reporting | Tableau de bord, état des stocks, historique des mouvements, rapports d'inventaire, exports |
+| Achats IA | Veille mensuelle des fournisseurs tunisiens, demandes de prix validées puis envoyées par e-mail, comparaison des devis, prédiction des prix, achats anticipés, économies et ROI |
 
 ## Architecture
 
@@ -28,6 +29,8 @@ chaîne DevOps complète (Azure DevOps, SonarQube, Nexus, Docker, Kubernetes, Pr
  └────────────┘  └──────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └──────┬───────┘
                         └──────────────┴──── PostgreSQL 16 ─┴──────────────┘   (agrège les autres)
                           auth_db   product_db   supplier_db   stock_db
+
+ procurement-service :8086 (module IA achats) ─► procurement_db, API Claude, SMTP (Mailpit)
 ```
 
 - **Backend** : Java 21, Spring Boot 4, Spring Security (JWT HMAC), Spring Data JPA, Flyway,
@@ -53,17 +56,17 @@ Application : <http://localhost:8080> — compte `admin` / valeur de `ADMIN_PASS
               ├─ Build      Maven : tests JUnit + JaCoCo ─► SonarQube (Quality Gate) ─► Nexus (maven)
               │             Angular : build prod ─► SonarQube ─► Trivy (dépendances)
               │             Contrôle des manifestes Kubernetes
-              ├─ Images     6 images Docker ─► Trivy ─► Nexus (registre Docker)
+              ├─ Images     7 images Docker ─► Trivy ─► Nexus (registre Docker)
               ├─ Deploy     Kustomize ─► kubectl apply ─► cluster kubeadm (1 master + 2 workers, VMware)
               ├─ Smoke      test de bout en bout via l'Ingress
-              └─ Monitoring Prometheus : collecte des 5 services, alertes critiques ─► Grafana
+              └─ Monitoring Prometheus : collecte des 6 services, alertes critiques ─► Grafana
 ```
 
 ## Structure du dépôt
 
 | Dossier | Contenu |
 |---|---|
-| `backend/` | Projet Maven multi-modules : `common-lib` et les 5 microservices |
+| `backend/` | Projet Maven multi-modules : `common-lib` et les 6 microservices |
 | `frontend/` | Application Angular, configuration Nginx et en-têtes de sécurité |
 | `deploy/docker/` | Passerelle Nginx et initialisation PostgreSQL pour Docker Compose |
 | `deploy/k8s/` | Manifestes Kubernetes : `base/` et overlay `onprem/` (HPA, PDB, supervision) |
@@ -85,3 +88,4 @@ Application : <http://localhost:8080> — compte `admin` / valeur de `ADMIN_PASS
 6. [Pipeline Azure DevOps](docs/06-pipeline-azure-devops.md)
 7. [Supervision Prometheus / Grafana](docs/07-supervision.md)
 8. [Dépannage](docs/08-depannage.md)
+9. [Module IA achats](docs/09-module-ia.md)

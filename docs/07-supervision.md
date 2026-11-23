@@ -23,7 +23,7 @@ Dans `deploy/k8s/overlays/onprem/monitoring/` :
 
 | Fichier | Objet |
 |---|---|
-| `servicemonitor.yaml` | Découverte automatique des 5 services backend |
+| `servicemonitor.yaml` | Découverte automatique des 6 services backend |
 | `prometheusrule.yaml` | Règles d'alerte de l'application |
 | `makzeo-overview.json` | Tableau de bord Grafana, chargé automatiquement (ConfigMap `grafana_dashboard: "1"`) |
 
@@ -38,6 +38,8 @@ Ils sont déployés par le pipeline avec l'application : la supervision évolue 
 | MakzeoHighErrorRate | Plus de 5 % de réponses 5xx sur 5 min | warning |
 | MakzeoHighLatency | Latence p95 supérieure à 1 s sur 10 min | warning |
 | MakzeoJvmHeapHigh | Mémoire heap utilisée à plus de 90 % pendant 10 min | warning |
+| MakzeoProcurementWatchFailed | Veille fournisseurs en échec au cours des dernières 24 h | warning |
+| MakzeoProcurementAiErrors | Plus de 5 appels à l'API Claude en erreur en 1 h | warning |
 
 Consultation : Prometheus > *Alerts*, ou Grafana > *Alerting*. L'envoi de notifications (e-mail,
 Teams, Slack) se configure dans Alertmanager (`alertmanager.config` des valeurs Helm).
@@ -51,7 +53,9 @@ Teams, Slack) se configure dans Alertmanager (`alertmanager.config` des valeurs 
 - **Trafic HTTP** : requêtes par seconde, latence p95 et erreurs 5xx par service ;
 - **Métier** : mouvements de stock enregistrés par minute ;
 - **JVM et base de données** : mémoire heap, CPU, connexions JDBC actives (HikariCP), pauses
-  du ramasse-miettes.
+  du ramasse-miettes ;
+- **Module IA achats** : opportunités ouvertes, économies potentielles, RFQ envoyées, veilles
+  en échec, appels à l'IA et RFQ par résultat (métriques détaillées au chapitre 9).
 
 Les tableaux de bord fournis par kube-prometheus-stack (*Kubernetes / Compute Resources /
 Namespace (Pods)*, *Node Exporter / Nodes*) complètent la vue côté infrastructure.
@@ -76,5 +80,5 @@ sum(rate(http_server_requests_seconds_count{application="auth-service", uri="/ap
 ## 7.6 Vérification automatique
 
 Le stage **Monitoring** du pipeline exécute `ci/scripts/check-prometheus.sh` : il interroge
-Prometheus via le proxy de l'API Kubernetes, attend que les 5 services soient collectés et échoue
+Prometheus via le proxy de l'API Kubernetes, attend que les 6 services soient collectés et échoue
 si une alerte critique Makzeo est active.

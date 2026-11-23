@@ -17,7 +17,7 @@ import time
 import urllib.error
 import urllib.request
 
-PORTS = {"auth": 8081, "product": 8082, "supplier": 8083, "stock": 8084, "reporting": 8085}
+PORTS = {"auth": 8081, "product": 8082, "supplier": 8083, "stock": 8084, "reporting": 8085, "procurement": 8086}
 RUN_ID = str(int(time.time()))[-6:]
 passed = 0
 
@@ -271,12 +271,20 @@ def main():
     status, body = call("GET", "reporting", "/api/reports/stock?format=docx", token=admin)
     check("format non supporté -> 400", status == 400, body)
 
+    print("\n[Module IA achats]")
+    status, ov = call("GET", "procurement", "/api/procurement/overview", token=users["CONSULTANT"])
+    check("synthèse des achats accessible au consultant", status == 200 and "openOpportunities" in ov, ov)
+    status, _ = call("GET", "procurement", "/api/procurement/overview", token=users["MAGASINIER"])
+    check("magasinier sans accès au module achats -> 403", status == 403)
+    status, sup = call("GET", "procurement", "/api/procurement/suppliers?size=5", token=users["CONSULTANT"])
+    check("fournisseurs du marché consultables", status == 200, sup)
+
     print(f"\n{passed} vérifications réussies.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gateway", help="URL de la passerelle (sinon ports 8081-8085 en direct)")
+    parser.add_argument("--gateway", help="URL de la passerelle (sinon ports 8081-8086 en direct)")
     parser.add_argument("--admin-password", default=os.environ.get("ADMIN_PASSWORD"),
                         help="mot de passe du compte admin (par défaut : variable d'environnement ADMIN_PASSWORD)")
     parser.add_argument("--save-reports", help="dossier où enregistrer les rapports générés")

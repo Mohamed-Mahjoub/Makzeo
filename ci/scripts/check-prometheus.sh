@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Vérifie, après un déploiement, que Prometheus collecte les métriques des 5 microservices
+# Vérifie, après un déploiement, que Prometheus collecte les métriques des 6 microservices
 # et qu'aucune alerte critique de l'application n'est active.
 # Utilise le proxy de l'API Kubernetes (droit "services/proxy" du compte ci-deployer).
 #   KUBECONFIG=... bash ci/scripts/check-prometheus.sh
 # =============================================================================
 set -euo pipefail
 PROM="/api/v1/namespaces/${PROM_NAMESPACE:-monitoring}/services/${PROM_SERVICE:-kps-prometheus:9090}/proxy"
-EXPECTED="${EXPECTED_SERVICES:-5}"
+EXPECTED="${EXPECTED_SERVICES:-6}"
 TIMEOUT="${TIMEOUT_SECONDS:-300}"
 
 query() {

@@ -2,7 +2,7 @@
 
 ## 1.1 Vue d'ensemble
 
-Makzeo est découpée en cinq microservices Spring Boot indépendants, une interface Angular et une
+Makzeo est découpée en six microservices Spring Boot indépendants, une interface Angular et une
 base PostgreSQL. Chaque service possède sa propre base de données et expose une API REST
 documentée en OpenAPI 3. L'interface n'appelle jamais les services directement : toutes les
 requêtes passent par un point d'entrée unique (passerelle Nginx en local, Ingress NGINX dans
@@ -15,6 +15,7 @@ Kubernetes) qui route selon le préfixe d'URL.
 | supplier-service | 8083 | supplier_db | Fournisseurs, pays |
 | stock-service | 8084 | stock_db | Mouvements, niveaux, alertes, inventaires |
 | reporting-service | 8085 | — | Tableaux de bord et rapports (agrège les autres services) |
+| procurement-service | 8086 | procurement_db | Module IA achats : veille fournisseurs, RFQ, devis, prédiction des prix, recommandations ([chapitre 9](09-module-ia.md)) |
 | frontend | 8080 | — | Interface Angular servie par Nginx |
 
 ## 1.2 Organisation du code (Clean Architecture)

@@ -82,7 +82,13 @@ Des requêtes prêtes à l'emploi sont fournies dans `backend/docs/api-requests.
 | GET | `/api/reports/inventories/{id}` | Rapport d'inventaire |
 | GET | `/api/reports/analytics?days=` | Indicateurs et tendances |
 
-## 2.7 Format des erreurs
+## 2.7 Achats IA — procurement-service (8086)
+
+Routes `/api/procurement/**` : synthèse, veille, fournisseurs du marché, demandes de prix,
+devis et comparaison, prédictions, recommandations, économies. Détail au
+[chapitre 9](09-module-ia.md#96-api).
+
+## 2.8 Format des erreurs
 
 Toutes les erreurs suivent le même format JSON (`ApiError`), avec un code stable exploitable par
 l'interface (`VALIDATION_ERROR`, `NOT_FOUND`, `ACCESS_DENIED`, `DATA_INTEGRITY`, ...) :
@@ -109,7 +115,7 @@ l'interface (`VALIDATION_ERROR`, `NOT_FOUND`, `ACCESS_DENIED`, `DATA_INTEGRITY`,
 | 429 | Trop de tentatives de connexion |
 | 503 | Service distant indisponible (`REMOTE_SERVICE_ERROR`) |
 
-## 2.8 Points techniques
+## 2.9 Points techniques
 
 | Route | Usage |
 |---|---|

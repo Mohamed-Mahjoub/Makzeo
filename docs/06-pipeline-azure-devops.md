@@ -11,10 +11,10 @@ contiennent exactement les JAR et l'interface testés** (« build once, deploy m
 | Stage | Déclencheur | Contenu | Échec si |
 |---|---|---|---|
 | **Build** | push et pull request | Backend : `mvn verify` (ou `deploy` sur main), tests JUnit, couverture JaCoCo, SonarQube, publication Maven dans Nexus. Frontend : `npm ci` via Nexus, build production, SonarQube, Trivy (dépendances). Contrôle des manifestes. | test en échec, Quality Gate rouge, vulnérabilité HIGH/CRITICAL corrigeable, manifeste incohérent |
-| **Images** | main | 6 images à partir des artefacts du stage Build, analyse Trivy, push `:<build>` et `:latest` dans le registre Nexus | vulnérabilité CRITICAL corrigeable |
+| **Images** | main | 7 images à partir des artefacts du stage Build, analyse Trivy, push `:<build>` et `:latest` dans le registre Nexus | vulnérabilité CRITICAL corrigeable |
 | **Deploy** | main, après approbation | Secrets Kubernetes, `kustomize edit set image`, `kubectl apply --dry-run=server` puis `apply`, attente des rollouts, archivage des manifestes | manifeste refusé, pod non prêt en 7 min |
 | **Smoke** | main | `e2e_test.py` via l'Ingress | scénario fonctionnel en erreur |
-| **Monitoring** | main | Prometheus collecte les 5 services ; aucune alerte critique Makzeo active | cible absente, alerte critique |
+| **Monitoring** | main | Prometheus collecte les 6 services ; aucune alerte critique Makzeo active | cible absente, alerte critique |
 
 Le numéro de build (`20260512.3`) sert de tag d'image et de version SonarQube : chaque
 déploiement est traçable jusqu'au commit.
@@ -61,6 +61,8 @@ valeur pour la rendre secrète :
 | `ADMIN_PASSWORD` | mot de passe du compte admin de l'application (≥ 8 caractères) |
 | `NEXUS_CI_PASSWORD` | mot de passe du compte Nexus `ci-deployer` |
 | `SONAR_TOKEN` | jeton affiché par `configure-sonarqube.sh` |
+| `AI_API_KEY` | *facultatif* : clé de l'API Claude du module IA achats |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | *facultatifs* : compte d'un SMTP réel (sinon Mailpit) |
 
 Onglet **Pipeline permissions** : autoriser le pipeline (ou le faire au premier lancement).
 
