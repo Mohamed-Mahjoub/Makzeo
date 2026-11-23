@@ -25,6 +25,7 @@
         <module>supplier-service</module>
         <module>stock-service</module>
         <module>reporting-service</module>
+        <module>procurement-service</module>
     </modules>
 
     <properties>
