@@ -4,8 +4,10 @@ import ma.pfe.stock.procurement.domain.model.Quote;
 import ma.pfe.stock.procurement.domain.port.QuoteRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Component
 public class QuoteRepositoryAdapter implements QuoteRepository {
@@ -29,5 +31,10 @@ public class QuoteRepositoryAdapter implements QuoteRepository {
     @Override
     public List<Quote> findByProduct(Long productId) {
         return jpa.findByProductIdOrderByReceivedAtDesc(productId).stream().map(QuoteEntity::toDomain).toList();
+    }
+
+    @Override
+    public Set<Long> productIds() {
+        return new HashSet<>(jpa.findDistinctProductIds());
     }
 }

@@ -129,6 +129,11 @@ public class QuoteService {
                 properties.currency(), Math.round(monthly * 10) / 10.0, offers);
     }
 
+    /** Articles ayant reçu au moins un devis. */
+    public java.util.Set<Long> productIdsWithQuotes() {
+        return quotes.productIds();
+    }
+
     public Optional<Quote> findById(Long id) {
         return quotes.findById(id);
     }

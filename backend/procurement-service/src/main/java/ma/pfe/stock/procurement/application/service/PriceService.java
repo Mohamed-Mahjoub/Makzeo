@@ -33,6 +33,10 @@ public class PriceService {
 
     static final List<PriceSource> PAID_SOURCES = List.of(PriceSource.PURCHASE);
     private static final int MAX_IMPORT_LINES = 20_000;
+    /** Taille maximale du catalogue parcouru (catalogues de démonstration de 10 000 articles et plus). */
+    static final int CATALOG_SCAN_LIMIT = 50_000;
+    /** Sources qui constituent un historique exploitable pour la prévision (hors simple prix catalogue). */
+    static final List<PriceSource> HISTORY_SOURCES = List.of(PriceSource.PURCHASE, PriceSource.QUOTE, PriceSource.MARKET);
     private static final DateTimeFormatter DATE_FR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final PricePointRepository points;
@@ -63,6 +67,23 @@ public class PriceService {
 
     public Optional<PricePrediction> prediction(Long productId) {
         return predictions.findByProduct(productId);
+    }
+
+    /** Articles disposant d'un historique de prix (achats, devis ou prix du marché). */
+    public java.util.Set<Long> productIdsWithHistory() {
+        return points.productIdsWithSources(HISTORY_SOURCES);
+    }
+
+    /**
+     * Recalcule la prédiction statistique d'un article en conservant le dernier signal marché relevé
+     * par la veille (aucun appel à l'IA).
+     */
+    public Optional<PricePrediction> repredict(ProductInfo product) {
+        Double signal = predictions.findByProduct(product.id())
+                .map(PricePrediction::marketSignalPct)
+                .map(BigDecimal::doubleValue)
+                .orElse(null);
+        return predict(product, signal);
     }
 
     /** Dernier prix réellement payé, sinon prix d'achat de la fiche produit. */
@@ -109,9 +130,10 @@ public class PriceService {
      * date AAAA-MM-JJ ou JJ/MM/AAAA, décimales avec un point ou une virgule si le séparateur est ;).
      */
     public ImportResult importPurchases(String csv) {
-        Map<String, ProductInfo> byReference = catalog.activeProducts(10_000).stream()
+        Map<String, ProductInfo> byReference = catalog.activeProducts(CATALOG_SCAN_LIMIT).stream()
                 .collect(Collectors.toMap(p -> p.reference().toUpperCase(), Function.identity(), (a, b) -> a));
         List<String> rejected = new ArrayList<>();
+        Map<Long, ProductInfo> touched = new java.util.LinkedHashMap<>();
         int imported = 0;
         String[] lines = csv == null ? new String[0] : csv.split("\\r?\\n");
         if (lines.length > MAX_IMPORT_LINES) {
@@ -139,6 +161,7 @@ public class PriceService {
                 int qty = Integer.parseInt(f[3].trim());
                 BigDecimal price = new BigDecimal(f[4].trim().replace(" ", "").replace(",", "."));
                 record(product.id(), price, date, PriceSource.PURCHASE, supplier, qty);
+                touched.putIfAbsent(product.id(), product);
                 imported++;
             } catch (DateTimeParseException | NumberFormatException e) {
                 rejected.add("Ligne " + (i + 1) + " : valeur illisible (" + e.getMessage() + ")");
@@ -150,6 +173,8 @@ public class PriceService {
                 break;
             }
         }
+        // prédictions à jour dès l'import, sans attendre la veille mensuelle
+        touched.values().forEach(this::repredict);
         return new ImportResult(imported, rejected);
     }
 

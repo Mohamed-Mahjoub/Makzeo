@@ -78,6 +78,10 @@ class ProcurementIntegrationTest {
         assertThat(prices.findLatest(1L, List.of(PriceSource.PURCHASE)).orElseThrow().unitPrice())
                 .isEqualByComparingTo("13.000");
         assertThat(prices.findByProduct(1L)).hasSize(2);
+        prices.save(new PricePoint(null, 2L, new BigDecimal("4.000"), LocalDate.of(2026, 3, 5), PriceSource.CATALOG,
+                null, null));
+        assertThat(prices.productIdsWithSources(List.of(PriceSource.PURCHASE, PriceSource.QUOTE)))
+                .contains(1L).doesNotContain(2L);
     }
 
     @Test
