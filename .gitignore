@@ -23,3 +23,4 @@ infra/devops-vm/.env
 # Python
 __pycache__/
 *.pyc
+backend/scripts/off_tunisie.json
