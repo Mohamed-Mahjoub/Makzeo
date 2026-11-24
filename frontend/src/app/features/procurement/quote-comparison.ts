@@ -94,13 +94,13 @@ function emptyQuote(productId: number): QuoteRequest {
               <div class="kpi-grid kpi-grid--4">
                 <app-kpi-card label="Offres comparées" [value]="eligibleCount() + ' / ' + c.offers.length" icon="clipboard"
                               hint="éligibles / total" />
-                <app-kpi-card label="Meilleure offre" [value]="best() ? money(best()!.offer.unitPrice) : '—'" icon="check" tone="success"
-                              [hint]="best()?.offer.supplierName ?? 'aucune'" />
+                <app-kpi-card label="Meilleure offre" [value]="bestPrice()" icon="check" tone="success"
+                              [hint]="bestSupplier()" />
                 <app-kpi-card label="Dernier prix payé" [value]="c.referencePrice !== null ? money(c.referencePrice) : 'inconnu'" icon="clock"
                               [hint]="'consommation : ' + (c.monthlyConsumption | number: '1.0-1') + ' / mois'" />
                 <app-kpi-card label="Économie possible" [value]="bestSaving() !== null ? (bestSaving()! | number: '1.1-1') + ' %' : '—'" icon="coins"
                               [tone]="(bestSaving() ?? 0) > 0 ? 'success' : 'default'"
-                              [hint]="best()?.offer.annualSaving ? money(best()!.offer.annualSaving) + ' par an' : 'sur le dernier prix payé'" />
+                              [hint]="bestAnnualHint()" />
               </div>
             }
           </section>
@@ -353,6 +353,15 @@ export class QuoteComparisonPage {
   protected readonly best = computed(() => this.ranked().find((r) => r.rank === 1) ?? null);
   protected readonly eligibleCount = computed(() => this.ranked().filter((r) => r.included).length);
   protected readonly bestSaving = computed(() => this.best()?.offer.savingPct ?? null);
+  protected readonly bestSupplier = computed(() => this.best()?.offer.supplierName ?? 'aucune');
+  protected readonly bestPrice = computed(() => {
+    const b = this.best();
+    return b ? money(b.offer.unitPrice) : '—';
+  });
+  protected readonly bestAnnualHint = computed(() => {
+    const annual = this.best()?.offer.annualSaving;
+    return annual ? money(annual) + ' par an' : 'sur le dernier prix payé';
+  });
 
   protected readonly bars = computed<PriceBar[]>(() => this.ranked().map((r) => ({
     id: r.offer.quoteId,
