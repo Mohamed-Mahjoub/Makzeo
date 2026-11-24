@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import ma.pfe.stock.common.security.Roles;
 import ma.pfe.stock.procurement.application.dto.ComparisonView;
+import ma.pfe.stock.procurement.application.dto.QuotedProductView;
 import ma.pfe.stock.procurement.application.port.MarketIntelligence;
 import ma.pfe.stock.procurement.application.service.QuoteService;
 import ma.pfe.stock.procurement.domain.model.Quote;
@@ -56,6 +57,13 @@ public class QuoteController {
     @PreAuthorize(Roles.CAN_MANAGE_CATALOG)
     public MarketIntelligence.ExtractedQuote extract(@Valid @RequestBody ProcurementRequests.ExtractRequest request) {
         return service.extract(request.productId(), request.text());
+    }
+
+    @Operation(summary = "Articles disposant d'offres", description = "Meilleure offre et dernier prix payé par article.")
+    @GetMapping("/products")
+    @PreAuthorize(Roles.CAN_REPORT)
+    public List<QuotedProductView> quotedProducts() {
+        return service.quotedProducts();
     }
 
     @Operation(summary = "Comparer les offres d'un article", description = "Classement par rapport qualité-prix pour la quantité indiquée.")

@@ -9,12 +9,17 @@ import ma.pfe.stock.common.security.CurrentUser;
 import ma.pfe.stock.common.security.Roles;
 import ma.pfe.stock.procurement.application.dto.OverviewView;
 import ma.pfe.stock.procurement.application.dto.WatchRunView;
+import ma.pfe.stock.procurement.application.service.AiReportService;
 import ma.pfe.stock.procurement.application.service.MarketWatchService;
 import ma.pfe.stock.procurement.application.service.OverviewService;
 import ma.pfe.stock.procurement.domain.model.SourcingLead;
 import ma.pfe.stock.procurement.domain.model.WatchRun;
 import ma.pfe.stock.procurement.domain.service.SavingsCalculator;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,10 +40,26 @@ public class ProcurementController {
 
     private final OverviewService overview;
     private final MarketWatchService watch;
+    private final AiReportService report;
 
-    public ProcurementController(OverviewService overview, MarketWatchService watch) {
+    public ProcurementController(OverviewService overview, MarketWatchService watch, AiReportService report) {
         this.overview = overview;
         this.watch = watch;
+        this.report = report;
+    }
+
+    @Operation(summary = "Rapport PDF de l'agent IA",
+            description = "Synthèse imprimable : économies, recommandations, meilleures offres, prédictions.")
+    @GetMapping(value = "/report/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize(Roles.CAN_REPORT)
+    public ResponseEntity<byte[]> reportPdf() {
+        byte[] pdf = report.pdf(CurrentUser.username());
+        String filename = "rapport-agent-ia-" + java.time.LocalDate.now() + ".pdf";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @Operation(summary = "Synthèse du module achats")

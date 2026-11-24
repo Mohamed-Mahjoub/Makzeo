@@ -3,43 +3,59 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { errorMessage } from '../../core/services/error-message';
+import { Icon } from '../../shared/icon';
+import { Logo } from '../../shared/logo';
+import { ThemeToggle } from '../../shared/theme-toggle';
 
 /** Page de connexion. */
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, Icon, Logo, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="login">
       <section class="login__hero">
-        <div class="login__brand">
-          <svg viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
-            <rect width="32" height="32" rx="7" fill="#0f2742" />
-            <path d="M8 11l8-4 8 4v10l-8 4-8-4zM8 11l8 4 8-4M16 15v10" fill="none" stroke="#5eead4"
-                  stroke-width="2.2" stroke-linejoin="round" />
-          </svg>
-          <span>Makzeo</span>
+        <div class="login__logo">
+          <app-logo [size]="112" />
+          <div class="login__wordmark">Makzeo<small>Gestion des produits et des stocks</small></div>
         </div>
-        <h1>Pilotez vos stocks en temps réel</h1>
-        <p class="login__tagline">Makzeo — de l'arabe <em>makhzen</em>, l'entrepôt, qui a donné « magasin ».</p>
-        <ul>
-          <li>Catalogue produits, catégories et codes-barres</li>
-          <li>Entrées, sorties, inventaires et historique complet</li>
-          <li>Alertes de rupture et de seuil minimum</li>
-          <li>Tableaux de bord et rapports PDF / Excel</li>
-        </ul>
+
+        <div class="login__intro">
+          <h1>Votre catalogue, vos stocks et vos achats au même endroit.</h1>
+          <p>Connectez-vous avec le compte fourni par votre administrateur.</p>
+          <div class="login__features">
+            <div class="login__feature"><span><app-icon name="barcode" [size]="18" /></span><strong>Produits et codes-barres</strong></div>
+            <div class="login__feature"><span><app-icon name="swap" [size]="18" /></span><strong>Entrées, sorties et inventaires</strong></div>
+            <div class="login__feature"><span><app-icon name="bell" [size]="18" /></span><strong>Alertes de stock</strong></div>
+            <div class="login__feature"><span><app-icon name="chart" [size]="18" /></span><strong>Achats et rapports</strong></div>
+          </div>
+        </div>
+
+        <p class="login__foot">Makzeo · {{ year }}</p>
       </section>
+
       <section class="login__panel">
+        <app-theme-toggle />
         <form class="card login__card" (ngSubmit)="submit()">
-          <h2>Connexion</h2>
-          <p class="muted">Identifiez-vous pour accéder à l'application.</p>
+          <div class="login__mobile-logo"><app-logo [size]="56" /> Makzeo</div>
+          <div>
+            <h2>Connexion</h2>
+            <p class="muted">Saisissez votre identifiant et votre mot de passe.</p>
+          </div>
           <label class="field">
             <span>Nom d'utilisateur</span>
             <input name="username" [(ngModel)]="username" autocomplete="username" required autofocus />
           </label>
           <label class="field">
             <span>Mot de passe</span>
-            <input name="password" type="password" [(ngModel)]="password" autocomplete="current-password" required />
+            <span class="password-field">
+              <input name="password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password"
+                     autocomplete="current-password" required />
+              <button type="button" class="icon-btn" (click)="showPassword.set(!showPassword())"
+                      [attr.aria-label]="showPassword() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <app-icon [name]="showPassword() ? 'x' : 'key'" [size]="16" />
+              </button>
+            </span>
           </label>
           @if (error()) {
             <div class="form-error">{{ error() }}</div>
@@ -47,7 +63,6 @@ import { errorMessage } from '../../core/services/error-message';
           <button class="btn btn--primary btn--block" type="submit" [disabled]="loading()">
             {{ loading() ? 'Connexion…' : 'Se connecter' }}
           </button>
-          <p class="login__hint muted">Compte initial : <code>admin</code> / <code>Admin&#64;12345</code></p>
         </form>
       </section>
     </div>
@@ -62,6 +77,8 @@ export class LoginPage {
   protected password = '';
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly showPassword = signal(false);
+  protected readonly year = new Date().getFullYear();
 
   constructor() {
     if (this.auth.isAuthenticated()) {

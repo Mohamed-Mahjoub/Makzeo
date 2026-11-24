@@ -19,8 +19,8 @@ import { ProductPicker } from '../../shared/product-picker';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (inventory(); as inv) {
-      <app-page-header [title]="'Inventaire n° ' + inv.id + ' — ' + inv.name"
-                       [subtitle]="'Ouvert par ' + inv.createdBy + ' — ' + labels[inv.status]">
+      <app-page-header [title]="'Inventaire n° ' + inv.id + ' · ' + inv.name"
+                       [subtitle]="'Ouvert par ' + inv.createdBy + ' · ' + labels[inv.status]">
         <a class="btn btn--ghost" routerLink="/inventories">‹ Retour</a>
         @if (auth.canReport()) {
           <button type="button" class="btn btn--ghost" (click)="download('pdf')"><app-icon name="download" [size]="16" /> PV PDF</button>

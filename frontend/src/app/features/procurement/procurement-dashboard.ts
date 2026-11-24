@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { errorMessage } from '../../core/services/error-message';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProcurementService } from '../../core/services/procurement.service';
+import { AiReportButton } from './ai-report-button';
 import { BarItem, BarListChart } from '../../shared/charts/bar-list-chart';
 import { moneyRounded } from '../../shared/format';
 import { Icon } from '../../shared/icon';
@@ -17,11 +18,12 @@ import { PageHeader } from '../../shared/page-header';
 /** Tableau de bord des achats : économies, opportunités, veille du marché, prix à surveiller. */
 @Component({
   selector: 'app-procurement-dashboard',
-  imports: [DatePipe, DecimalPipe, RouterLink, PageHeader, KpiCard, BarListChart, Icon],
+  imports: [DatePipe, DecimalPipe, RouterLink, PageHeader, KpiCard, BarListChart, Icon, AiReportButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header title="Achats intelligents"
                      [subtitle]="'Veille mensuelle du marché (' + (overview()?.marketName ?? 'Tunisie') + '), demandes de prix, prédiction des prix et achats anticipés'">
+      <app-ai-report-button [primary]="!auth.canManageCatalog()" />
       @if (auth.canManageCatalog()) {
         <button type="button" class="btn btn--primary" (click)="runWatch()" [disabled]="running()">
           <app-icon name="refresh" [size]="16" /> {{ running() ? 'Veille en cours…' : 'Lancer la veille' }}</button>
@@ -118,7 +120,7 @@ import { PageHeader } from '../../shared/page-header';
     </section>
   `,
   styles: [`
-    .notice { background: var(--warning-50); border: 1px solid #fde68a; border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; }
+    .notice { background: var(--warning-50); border: 1px solid var(--warning-50); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; }
     .notice p { margin: 4px 0; }
     .stats-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
     .stats-row div { display: flex; flex-direction: column; }

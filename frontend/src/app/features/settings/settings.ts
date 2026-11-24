@@ -38,12 +38,12 @@ import { PageHeader } from '../../shared/page-header';
               <select name="currency" [ngModel]="selected()" (ngModelChange)="selected.set($event)">
                 <optgroup label="Devises courantes">
                   @for (c of commonCurrencies(); track c.code) {
-                    <option [ngValue]="c.code">{{ c.code }} — {{ c.name }}</option>
+                    <option [ngValue]="c.code">{{ c.code }} · {{ c.name }}</option>
                   }
                 </optgroup>
                 <optgroup label="Toutes les devises">
                   @for (c of otherCurrencies(); track c.code) {
-                    <option [ngValue]="c.code">{{ c.code }} — {{ c.name }}</option>
+                    <option [ngValue]="c.code">{{ c.code }} · {{ c.name }}</option>
                   }
                 </optgroup>
               </select>
@@ -69,7 +69,7 @@ import { PageHeader } from '../../shared/page-header';
       <section class="card">
         <div class="card__title"><h3>À propos</h3></div>
         <dl class="details">
-          <dt>Application</dt><dd><strong>Makzeo</strong> — gestion de produits et de stock</dd>
+          <dt>Application</dt><dd><strong>Makzeo</strong> · gestion de produits et de stock</dd>
           <dt>Origine du nom</dt><dd>De l'arabe <em>makhzen</em> (entrepôt), qui a donné le mot français « magasin ».</dd>
           <dt>Architecture</dt><dd>5 microservices Spring Boot · frontend Angular</dd>
           <dt>Montants</dt><dd>Saisis et affichés dans la devise de l'application (jusqu'à 3 décimales)</dd>
