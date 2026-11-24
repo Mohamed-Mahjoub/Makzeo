@@ -190,6 +190,16 @@ export interface Comparison {
   offers: ComparedOffer[];
 }
 
+export interface QuotedProduct {
+  productId: number;
+  reference: string;
+  name: string;
+  offers: number;
+  bestUnitPrice: number | null;
+  referencePrice: number | null;
+  lastOfferAt: string | null;
+}
+
 export interface PricePoint {
   id: number;
   productId: number;

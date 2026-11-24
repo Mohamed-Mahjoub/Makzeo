@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { PageResult } from '../models/models';
 import {
   Comparison, ExtractedQuote, ImportResult, MarketSupplier, MarketSupplierRequest, MarketSupplierStatus,
-  PriceHistory, PricePoint, PricePrediction, ProcurementOverview, Quote, QuoteRequest, Recommendation,
+  PriceHistory, PricePoint, PricePrediction, ProcurementOverview, Quote, QuoteRequest, QuotedProduct, Recommendation,
   RecommendationStatus, RecommendationType, Rfq, RfqStatus, SavingsSummary, SourcingLead, WatchRun
 } from '../models/procurement.models';
 import { api, toParams } from './api';
@@ -33,6 +33,11 @@ export class ProcurementService {
 
   leads(productId?: number | null): Observable<SourcingLead[]> {
     return this.http.get<SourcingLead[]>(api('/api/procurement/leads'), { params: toParams({ productId }) });
+  }
+
+  /** Articles disposant d'offres (navigation de la page de comparaison). */
+  quotedProducts(): Observable<QuotedProduct[]> {
+    return this.http.get<QuotedProduct[]>(api('/api/procurement/quotes/products'));
   }
 
   // ---- fournisseurs du marché

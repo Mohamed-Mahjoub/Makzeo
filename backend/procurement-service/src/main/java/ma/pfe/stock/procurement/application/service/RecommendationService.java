@@ -91,11 +91,21 @@ public class RecommendationService {
 
     /** Recalcule les recommandations de tous les articles actifs (sans appel à l'IA). */
     public int refreshAll() {
-        List<ProductInfo> products = catalog.activeProducts(2000);
+        // Seuls les articles disposant d'un historique de prix ou d'un devis peuvent donner lieu à une
+        // recommandation : on évite ainsi de parcourir tout un catalogue de plusieurs milliers d'articles.
+        java.util.Set<Long> candidates = new java.util.HashSet<>(prices.productIdsWithHistory());
+        candidates.addAll(quotes.productIdsWithQuotes());
+        if (candidates.isEmpty()) {
+            return 0;
+        }
+        List<ProductInfo> products = catalog.activeProducts(PriceService.CATALOG_SCAN_LIMIT).stream()
+                .filter(p -> candidates.contains(p.id()))
+                .toList();
         Map<Long, StockInfo> situation = stock.stockSituation(products.stream().map(ProductInfo::id).toList(),
                 properties.consumptionLookbackDays());
         int created = 0;
         for (ProductInfo p : products) {
+            prices.repredict(p);
             created += refresh(p, situation.getOrDefault(p.id(), StockInfo.unknown(p.id())));
         }
         return created;

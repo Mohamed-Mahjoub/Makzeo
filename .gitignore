@@ -19,3 +19,8 @@ infra/devops-vm/.env
 # Analyse SonarQube locale
 .scannerwork/
 .sonar/
+
+# Python
+__pycache__/
+*.pyc
+backend/scripts/off_tunisie.json

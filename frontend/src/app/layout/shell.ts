@@ -4,6 +4,8 @@ import { ROLE_LABELS, Role } from '../core/models/models';
 import { AuthService } from '../core/services/auth.service';
 import { SettingsService } from '../core/services/settings.service';
 import { Icon } from '../shared/icon';
+import { Logo } from '../shared/logo';
+import { ThemeToggle } from '../shared/theme-toggle';
 
 interface MenuItem {
   path: string;
@@ -20,7 +22,7 @@ interface MenuSection {
 /** Mise en page principale : barre latérale (menu selon le rôle) + en-tête + contenu. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, Logo, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html'
 })

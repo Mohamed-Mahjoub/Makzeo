@@ -89,3 +89,4 @@ Application : <http://localhost:8080> — compte `admin` / valeur de `ADMIN_PASS
 7. [Supervision Prometheus / Grafana](docs/07-supervision.md)
 8. [Dépannage](docs/08-depannage.md)
 9. [Module IA achats](docs/09-module-ia.md)
+10. [Démonstration au jury](docs/10-demo-jury.md)
