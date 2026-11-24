@@ -134,7 +134,11 @@ public class QuoteService {
         return quotes.productIds().stream().sorted().limit(500)
                 .map(id -> catalog.product(id).map(product -> {
                     List<Quote> offers = quotes.findByProduct(id);
-                    BigDecimal best = offers.stream().map(Quote::unitPrice).min(BigDecimal::compareTo).orElse(null);
+                    // meilleure offre au sens du classement (rapport qualité-prix), pas simplement la moins chère
+                    BigDecimal best = OfferComparator.compare(offers, Math.max(1, product.minStock()),
+                                    prices.referencePrice(product), LocalDate.now(zone), zone,
+                                    OfferComparator.Weights.DEFAULT).stream()
+                            .filter(r -> r.rank() == 1).findFirst().map(r -> r.quote().unitPrice()).orElse(null);
                     Instant last = offers.stream().map(Quote::receivedAt).filter(java.util.Objects::nonNull)
                             .max(Instant::compareTo).orElse(null);
                     return new ma.pfe.stock.procurement.application.dto.QuotedProductView(id, product.reference(),

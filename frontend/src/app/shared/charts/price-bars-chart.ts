@@ -49,6 +49,7 @@ export interface PriceBar {
     .pb__ref { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #0f172a; z-index: 1; pointer-events: none; }
     .pb-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .78rem; color: var(--muted); margin-bottom: 10px; }
     .pb-legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .pb-scale { margin-left: auto; font-style: italic; }
     .t-best { background: #16a34a; }
     .t-identical { background: #2563eb; }
     .t-equivalent { background: #7c3aed; }
@@ -65,14 +66,25 @@ export class PriceBarsChart {
 
   protected readonly labelWidth = '34%';
 
-  private readonly max = computed(() =>
-    Math.max(1e-9, ...this.bars().map((b) => b.value), this.reference() ?? 0) * 1.05);
+  /** Échelle resserrée autour des prix (et non depuis zéro) pour rendre visibles les écarts entre offres. */
+  private readonly domain = computed(() => {
+    const values = [...this.bars().map((b) => b.value), ...(this.reference() ? [this.reference()!] : [])];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = Math.max(max - min, max * 0.05, 1e-9);
+    return { lo: Math.max(0, min - span * 0.6), hi: max + span * 0.08 };
+  });
+
+  private pct(v: number): number {
+    const { lo, hi } = this.domain();
+    return ((v - lo) / (hi - lo || 1)) * 100;
+  }
 
   protected readonly rows = computed(() =>
-    this.bars().map((b) => ({ ...b, width: Math.max(1, (b.value / this.max()) * 100) })));
+    this.bars().map((b) => ({ ...b, width: Math.max(2, this.pct(b.value)) })));
 
   protected readonly refLeft = computed(() => {
     const r = this.reference();
-    return r === null || r <= 0 ? null : (r / this.max()) * 100;
+    return r === null || r <= 0 ? null : this.pct(r);
   });
 }
