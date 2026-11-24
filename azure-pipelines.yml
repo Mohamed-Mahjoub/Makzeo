@@ -1,234 +1,371 @@
 # =============================================================================
 # Makzeo - pipeline CI/CD Azure DevOps
-#   Build   : tests backend (Maven), build Angular, contrôle des manifestes
-#   Docker  : 6 images construites avec les Dockerfiles existants, poussées dans ACR
-#   Deploy  : déploiement sur AKS avec l'overlay Kustomize deploy/k8s/overlays/azure
-#   Smoke   : test de bout en bout (backend/scripts/e2e_test.py) via l'Ingress
 #
-# A créer avant le premier lancement (voir le guide) :
-#   - connexion de service "makzeo-acr"   (Docker Registry -> Azure Container Registry)
-#   - connexion de service "makzeo-azure" (Azure Resource Manager)
-#   - groupe de variables  "makzeo-secrets" : JWT_SECRET, POSTGRES_PASSWORD, ADMIN_PASSWORD (secrets)
-#   - environnement        "makzeo-prod"   (approbation facultative)
+#   1. Build         compilation, tests unitaires, couverture JaCoCo, analyse SonarQube
+#                    (Quality Gate bloquante), publication des artefacts Maven dans Nexus,
+#                    compilation Angular, analyse des dépendances (Trivy), contrôle des manifestes
+#   2. Images        7 images Docker construites à partir des artefacts testés,
+#                    analyse de vulnérabilités (Trivy), publication dans le registre Nexus
+#   3. Deploy        déploiement Kubernetes (cluster kubeadm VMware) après approbation
+#   4. Smoke         test de bout en bout à travers l'Ingress
+#   5. Monitoring    vérification de la collecte Prometheus et des alertes
+#
+# Les stages 2 à 5 ne s'exécutent que pour la branche main. Une pull request s'arrête au stage 1.
+# Prérequis (voir docs/06-pipeline-azure-devops.md) :
+#   pool d'agents      Makzeo-OnPrem         agent auto-hébergé sur le master (outils DevOps)
+#   groupe de variables makzeo-secrets       JWT_SECRET, POSTGRES_PASSWORD, ADMIN_PASSWORD,
+#                                            NEXUS_CI_PASSWORD, SONAR_TOKEN (secrets)
+#                                            facultatifs : AI_API_KEY, SMTP_USERNAME, SMTP_PASSWORD
+#   fichier sécurisé   makzeo-kubeconfig     kubeconfig du compte de service ci-deployer
+#   environnement      makzeo-onprem         approbation avant déploiement
 # =============================================================================
+
+name: $(Date:yyyyMMdd)$(Rev:.r)
 
 trigger:
   branches:
     include: [main]
   paths:
-    exclude: ['**/*.md']
+    exclude: ['docs/**', '**/*.md']
 
 pr:
   branches:
     include: [main]
 
 pool:
-  vmImage: ubuntu-latest
+  name: Makzeo-OnPrem
 
 variables:
   - group: makzeo-secrets
-  # --- à adapter -------------------------------------------------------------
-  - name: acrServiceConnection
-    value: makzeo-acr
-  - name: azureServiceConnection
-    value: makzeo-azure
-  - name: acrLoginServer
-    value: makzeoacr.azurecr.io
-  - name: resourceGroup
-    value: rg-makzeo
-  - name: aksCluster
-    value: aks-makzeo
-  - name: appUrl
-    value: http://makzeo.20.0.0.1.nip.io
-  # ---------------------------------------------------------------------------
+  # --- Adresses du laboratoire (voir infra/cluster.env) ----------------------
+  - name: NEXUS_URL
+    value: http://192.168.80.10:8081
+  - name: NEXUS_REGISTRY
+    value: 192.168.80.10:8083
+  - name: NEXUS_CI_USER
+    value: ci-deployer
+  - name: SONAR_HOST_URL
+    value: http://192.168.80.10:9000
+  - name: APP_URL
+    value: http://makzeo.192.168.80.11.nip.io
+  # --- Paramètres du pipeline -------------------------------------------------
   - name: imageTag
-    value: $(Build.BuildId)
-  - name: MAVEN_CACHE_FOLDER
-    value: $(Pipeline.Workspace)/.m2/repository
+    value: $(Build.BuildNumber)
+  - name: artifactsDir
+    value: $(Pipeline.Workspace)/makzeo-artifacts
+  - name: isMain
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  - name: trivyImage
+    value: aquasec/trivy:0.58.1
+  - name: sonarMavenPlugin
+    value: org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751
+  - name: services
+    value: auth-service product-service supplier-service stock-service reporting-service procurement-service
 
 stages:
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
   - stage: Build
-    displayName: Build et tests
+    displayName: Build, tests et qualité
     jobs:
+      # -----------------------------------------------------------------------
       - job: Backend
-        displayName: Backend - mvn verify
+        displayName: Backend - tests, couverture, SonarQube, Nexus
+        timeoutInMinutes: 45
         steps:
-          - task: Cache@2
-            displayName: Cache Maven
-            inputs:
-              key: 'maven | "$(Agent.OS)" | backend/**/pom.xml'
-              restoreKeys: |
-                maven | "$(Agent.OS)"
-              path: $(MAVEN_CACHE_FOLDER)
+          - checkout: self
+            clean: true
+            fetchDepth: 0
 
           - script: |
-              export JAVA_HOME="$JAVA_HOME_21_X64"
+              set -euo pipefail
+              rm -rf "$(artifactsDir)" && mkdir -p "$(artifactsDir)"
               java -version
-              mvn -B -ntp verify -Dmaven.repo.local="$(MAVEN_CACHE_FOLDER)"
-            workingDirectory: backend
-            displayName: Compiler et tester (JUnit)
+              mvn -version
+            displayName: Préparation de l'espace de travail
+
+          - script: |
+              set -euo pipefail
+              GOAL=verify
+              # Sur main, les artefacts testés sont aussi publiés dans Nexus (maven-snapshots)
+              if [ "$(isMain)" = "True" ]; then GOAL=deploy; fi
+              mvn -B -ntp -s ci/maven-settings.xml -f backend/pom.xml -Pcoverage \
+                  clean "${GOAL}" -Dnexus.url="${NEXUS_URL}"
+            displayName: Compilation, tests et couverture (mvn verify / deploy)
+            env:
+              NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
 
           - task: PublishTestResults@2
-            displayName: Publier les résultats de tests
+            displayName: Publication des résultats de tests
             condition: succeededOrFailed()
             inputs:
               testResultsFormat: JUnit
               testResultsFiles: 'backend/**/target/surefire-reports/TEST-*.xml'
-              testRunTitle: Backend JUnit
+              testRunTitle: Backend - tests JUnit
               failTaskOnFailedTests: true
 
-      - job: Frontend
-        displayName: Frontend - ng build
-        steps:
-          - task: NodeTool@0
+          - task: PublishCodeCoverageResults@2
+            displayName: Publication de la couverture de code
             inputs:
-              versionSpec: '22.x'
-          - script: |
-              if [ -f package-lock.json ]; then npm ci; else npm install; fi
-              npx ng build --configuration production
-            workingDirectory: frontend
-            displayName: Installer et compiler Angular
+              summaryFileLocation: 'backend/**/target/site/jacoco/jacoco.xml'
 
-      - job: Manifests
-        displayName: Manifestes Kubernetes
+          - script: |
+              set -euo pipefail
+              mvn -B -ntp -s ci/maven-settings.xml -f backend/pom.xml "$(sonarMavenPlugin):sonar" \
+                  -Dsonar.host.url="${SONAR_HOST_URL}" \
+                  -Dsonar.token="${SONAR_TOKEN}" \
+                  -Dsonar.projectKey=makzeo-backend \
+                  -Dsonar.projectName="Makzeo - Backend" \
+                  -Dsonar.projectVersion="$(imageTag)" \
+                  -Dsonar.qualitygate.wait=true \
+                  -Dsonar.qualitygate.timeout=300
+            displayName: Analyse SonarQube et Quality Gate (backend)
+            env:
+              NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
+              SONAR_TOKEN: $(SONAR_TOKEN)
+
+          - script: |
+              set -euo pipefail
+              for svc in $(services); do
+                mkdir -p "$(artifactsDir)/${svc}"
+                cp "backend/${svc}/target/${svc}.jar" "$(artifactsDir)/${svc}/app.jar"
+              done
+              ls -la "$(artifactsDir)"/*
+            displayName: Mise de côté des JAR testés pour les images
+
+      # -----------------------------------------------------------------------
+      - job: Frontend
+        displayName: Frontend - compilation, SonarQube, dépendances
+        dependsOn: Backend
+        timeoutInMinutes: 30
         steps:
-          - script: |
-              pip install --quiet pyyaml
-              python3 scripts/validate_manifests.py
-            displayName: validate_manifests.py
-          - script: kubectl kustomize deploy/k8s/overlays/azure > /dev/null
-            displayName: Rendu de l'overlay azure
+          - checkout: self
+            clean: true
 
-  # ---------------------------------------------------------------------------
-  - stage: Docker
-    displayName: Images Docker -> ACR
+          - script: |
+              set -euo pipefail
+              # Registre npm : proxy Nexus (cache de registry.npmjs.org), authentification du compte CI
+              NPMRC="$(Agent.TempDirectory)/.npmrc"
+              AUTH="$(printf '%s:%s' "${NEXUS_CI_USER}" "${NEXUS_CI_PASSWORD}" | base64 -w0)"
+              {
+                echo "registry=${NEXUS_URL}/repository/npm-proxy/"
+                echo "//${NEXUS_URL#http://}/repository/npm-proxy/:_auth=${AUTH}"
+                echo "always-auth=true"
+              } > "${NPMRC}"
+              export NPM_CONFIG_USERCONFIG="${NPMRC}"
+              node --version
+              npm ci --no-audit --no-fund
+              npx ng build --configuration production
+              rm -f "${NPMRC}"
+            workingDirectory: frontend
+            displayName: Installation (npm ci via Nexus) et compilation Angular
+            env:
+              NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
+
+          - script: |
+              set -euo pipefail
+              docker run --rm --network host --user "$(id -u):$(id -g)" \
+                -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
+                -e SONAR_TOKEN="${SONAR_TOKEN}" \
+                -e SONAR_USER_HOME=/usr/src/.sonar \
+                -v "$(Build.SourcesDirectory)/frontend:/usr/src" \
+                sonarsource/sonar-scanner-cli:latest \
+                -Dsonar.projectVersion="$(imageTag)" \
+                -Dsonar.qualitygate.wait=true \
+                -Dsonar.qualitygate.timeout=300
+            displayName: Analyse SonarQube et Quality Gate (frontend)
+            env:
+              SONAR_TOKEN: $(SONAR_TOKEN)
+
+          - script: |
+              set -euo pipefail
+              docker run --rm -v "$(Build.SourcesDirectory)/frontend:/src:ro" -v trivy-cache:/root/.cache/ \
+                $(trivyImage) fs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+                --exit-code 1 --no-progress /src/package-lock.json
+            displayName: Analyse des dépendances npm (Trivy)
+
+          - script: |
+              set -euo pipefail
+              mkdir -p "$(artifactsDir)/frontend"
+              cp -r frontend/dist/stock-management-frontend/browser "$(artifactsDir)/frontend/browser"
+              cp frontend/nginx.conf frontend/security-headers.conf "$(artifactsDir)/frontend/"
+            displayName: Mise de côté de l'interface compilée
+
+      # -----------------------------------------------------------------------
+      - job: Manifests
+        displayName: Contrôle des manifestes Kubernetes
+        dependsOn: Frontend
+        steps:
+          - checkout: self
+            clean: true
+          - script: python3 scripts/validate_manifests.py
+            displayName: validate_manifests.py (Kustomize, supervision, pipeline)
+
+  # ===========================================================================
+  - stage: Images
+    displayName: Images Docker -> Nexus
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
-      - job: Images
-        displayName: Construire et pousser
-        strategy:
-          maxParallel: 3
-          matrix:
-            auth:
-              imageName: stock-auth-service
-              buildContext: backend
-              dockerfile: backend/Dockerfile
-              buildArgs: --build-arg SERVICE=auth-service
-            product:
-              imageName: stock-product-service
-              buildContext: backend
-              dockerfile: backend/Dockerfile
-              buildArgs: --build-arg SERVICE=product-service
-            supplier:
-              imageName: stock-supplier-service
-              buildContext: backend
-              dockerfile: backend/Dockerfile
-              buildArgs: --build-arg SERVICE=supplier-service
-            stock:
-              imageName: stock-stock-service
-              buildContext: backend
-              dockerfile: backend/Dockerfile
-              buildArgs: --build-arg SERVICE=stock-service
-            reporting:
-              imageName: stock-reporting-service
-              buildContext: backend
-              dockerfile: backend/Dockerfile
-              buildArgs: --build-arg SERVICE=reporting-service
-            frontend:
-              imageName: stock-frontend
-              buildContext: frontend
-              dockerfile: frontend/Dockerfile
-              buildArgs: ''
+      - job: BuildScanPush
+        displayName: Construction, analyse Trivy, publication
+        timeoutInMinutes: 45
         steps:
-          - task: Docker@2
-            displayName: Build $(imageName)
-            inputs:
-              command: build
-              containerRegistry: ${{ variables.acrServiceConnection }}
-              repository: $(imageName)
-              Dockerfile: $(dockerfile)
-              buildContext: $(buildContext)
-              arguments: $(buildArgs)
-              tags: |
-                $(imageTag)
-                latest
-          - task: Docker@2
-            displayName: Push $(imageName)
-            inputs:
-              command: push
-              containerRegistry: ${{ variables.acrServiceConnection }}
-              repository: $(imageName)
-              tags: |
-                $(imageTag)
-                latest
+          - checkout: self
+            clean: true
 
-  # ---------------------------------------------------------------------------
+          - script: |
+              set -euo pipefail
+              echo "${NEXUS_CI_PASSWORD}" | docker login "${NEXUS_REGISTRY}" -u "${NEXUS_CI_USER}" --password-stdin
+            displayName: Connexion au registre Nexus
+            env:
+              NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
+
+          - script: |
+              set -euo pipefail
+              scan() {
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/ \
+                  $(trivyImage) image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress "$1"
+              }
+              build_scan_push() {   # $1 = nom de l'image, $2 = Dockerfile, $3 = contexte, $4 = argument SERVICE
+                local repo="${NEXUS_REGISTRY}/makzeo/$1"
+                echo "==> ${repo}:$(imageTag)"
+                docker build -f "$2" --build-arg SERVICE="$4" --build-arg VERSION="$(imageTag)" \
+                  -t "${repo}:$(imageTag)" -t "${repo}:latest" "$3"
+                scan "${repo}:$(imageTag)"
+                docker push "${repo}:$(imageTag)"
+                docker push "${repo}:latest"
+              }
+              for svc in $(services); do
+                build_scan_push "${svc}" backend/Dockerfile.runtime "$(artifactsDir)/${svc}" "${svc}"
+              done
+              build_scan_push frontend frontend/Dockerfile.runtime "$(artifactsDir)/frontend" frontend
+            displayName: Construction, analyse et publication des 7 images
+
+          - script: docker logout "${NEXUS_REGISTRY}"
+            displayName: Déconnexion du registre
+            condition: always()
+
+          - script: docker image prune -f --filter "until=72h"
+            displayName: Nettoyage des images locales
+            condition: always()
+
+  # ===========================================================================
   - stage: Deploy
-    displayName: Déploiement AKS
-    dependsOn: Docker
+    displayName: Déploiement Kubernetes
+    dependsOn: Images
     condition: succeeded()
     jobs:
-      - deployment: AKS
-        displayName: kubectl apply -k overlays/azure
-        environment: makzeo-prod
+      - deployment: OnPrem
+        displayName: Cluster kubeadm VMware
+        environment: makzeo-onprem
         strategy:
           runOnce:
             deploy:
               steps:
                 - checkout: self
-                - task: AzureCLI@2
-                  displayName: Déployer sur AKS
+                  clean: true
+
+                - task: DownloadSecureFile@1
+                  name: kubeconfig
+                  displayName: Récupération du kubeconfig (compte ci-deployer)
                   inputs:
-                    azureSubscription: ${{ variables.azureServiceConnection }}
-                    scriptType: bash
-                    scriptLocation: inlineScript
-                    inlineScript: |
-                      set -euo pipefail
-                      az aks get-credentials -g "$(resourceGroup)" -n "$(aksCluster)" --overwrite-existing
+                    secureFile: makzeo-kubeconfig
 
-                      # 1. Namespace + Secret (valeurs du groupe de variables, jamais dans Git)
-                      kubectl create namespace stock-management --dry-run=client -o yaml | kubectl apply -f -
-                      kubectl -n stock-management create secret generic stock-secrets \
-                        --from-literal=POSTGRES_USER=postgres \
-                        --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
-                        --from-literal=JWT_SECRET="$JWT_SECRET" \
-                        --from-literal=ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-                        --dry-run=client -o yaml | kubectl apply -f -
+                - script: |
+                    set -euo pipefail
+                    export KUBECONFIG="$(kubeconfig.secureFilePath)"
+                    kubectl version
+                    kubectl get namespace stock-management
 
-                      # 2. Images du build courant
-                      cd deploy/k8s/overlays/azure
-                      if ! command -v kustomize >/dev/null; then
-                        curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-                        export PATH="$PWD:$PATH"
+                    echo "==> Secrets (valeurs du groupe makzeo-secrets, jamais stockées dans Git)"
+                    # Secrets facultatifs du module achats : ajoutés seulement s'ils sont définis dans le groupe
+                    # (une variable absente du groupe arrive sous la forme littérale "$(NOM)")
+                    optional=()
+                    for var in AI_API_KEY SMTP_USERNAME SMTP_PASSWORD; do
+                      value="${!var:-}"
+                      if [ -n "$value" ] && [[ "$value" != '$('* ]]; then
+                        optional+=(--from-literal="${var}=${value}")
                       fi
-                      for s in auth-service product-service supplier-service stock-service reporting-service frontend; do
-                        kustomize edit set image "stock-management/$s=$(acrLoginServer)/stock-$s:$(imageTag)"
-                      done
+                    done
+                    kubectl -n stock-management create secret generic stock-secrets \
+                      --from-literal=POSTGRES_USER=postgres \
+                      --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+                      --from-literal=JWT_SECRET="${JWT_SECRET}" \
+                      --from-literal=ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+                      "${optional[@]}" \
+                      --dry-run=client -o yaml | kubectl apply -f -
+                    kubectl -n stock-management create secret docker-registry nexus-registry \
+                      --docker-server="${NEXUS_REGISTRY}" \
+                      --docker-username="${NEXUS_CI_USER}" \
+                      --docker-password="${NEXUS_CI_PASSWORD}" \
+                      --dry-run=client -o yaml | kubectl apply -f -
 
-                      # 3. Application des manifestes et attente des rollouts
-                      kubectl apply -k .
-                      kubectl -n stock-management rollout status statefulset/postgres --timeout=300s
-                      for d in auth-service product-service supplier-service stock-service reporting-service frontend; do
-                        kubectl -n stock-management rollout status "deployment/$d" --timeout=420s
-                      done
-                      kubectl -n stock-management get pods -o wide
+                    echo "==> Images du build $(imageTag)"
+                    cd deploy/k8s/overlays/onprem
+                    for svc in $(services) frontend; do
+                      kustomize edit set image "stock-management/${svc}=${NEXUS_REGISTRY}/makzeo/${svc}:$(imageTag)"
+                    done
+                    kustomize build . > "$(Build.ArtifactStagingDirectory)/manifests-$(imageTag).yaml"
+
+                    echo "==> Validation par l'API server, puis application"
+                    kubectl apply --dry-run=server -f "$(Build.ArtifactStagingDirectory)/manifests-$(imageTag).yaml"
+                    kubectl apply -f "$(Build.ArtifactStagingDirectory)/manifests-$(imageTag).yaml"
+
+                    echo "==> Attente des déploiements"
+                    kubectl -n stock-management rollout status statefulset/postgres --timeout=300s
+                    for d in $(services) frontend; do
+                      kubectl -n stock-management rollout status "deployment/${d}" --timeout=420s
+                    done
+                    kubectl -n stock-management get pods -o wide
+                  displayName: Déploiement de la version $(imageTag)
                   env:
-                    JWT_SECRET: $(JWT_SECRET)
                     POSTGRES_PASSWORD: $(POSTGRES_PASSWORD)
+                    JWT_SECRET: $(JWT_SECRET)
                     ADMIN_PASSWORD: $(ADMIN_PASSWORD)
+                    NEXUS_CI_PASSWORD: $(NEXUS_CI_PASSWORD)
+                    AI_API_KEY: $(AI_API_KEY)
+                    SMTP_USERNAME: $(SMTP_USERNAME)
+                    SMTP_PASSWORD: $(SMTP_PASSWORD)
 
-  # ---------------------------------------------------------------------------
+                - task: PublishPipelineArtifact@1
+                  displayName: Archivage des manifestes appliqués
+                  inputs:
+                    targetPath: $(Build.ArtifactStagingDirectory)
+                    artifact: manifests
+
+  # ===========================================================================
   - stage: Smoke
     displayName: Test de bout en bout
     dependsOn: Deploy
     condition: succeeded()
     jobs:
       - job: E2E
+        displayName: Scénario complet via l'Ingress
         steps:
-          - script: |
-              python3 backend/scripts/e2e_test.py --gateway "$(appUrl)" --admin-password "$ADMIN_PASSWORD"
-            displayName: e2e_test.py via l'Ingress
+          - checkout: self
+            clean: true
+          - script: python3 backend/scripts/e2e_test.py --gateway "$(APP_URL)"
+            displayName: e2e_test.py sur $(APP_URL)
             env:
               ADMIN_PASSWORD: $(ADMIN_PASSWORD)
+
+  # ===========================================================================
+  - stage: Monitoring
+    displayName: Vérification de la supervision
+    dependsOn: Smoke
+    condition: succeeded()
+    jobs:
+      - job: Prometheus
+        displayName: Cibles Prometheus et alertes
+        steps:
+          - checkout: self
+            clean: true
+          - task: DownloadSecureFile@1
+            name: kubeconfig
+            displayName: Récupération du kubeconfig (compte ci-deployer)
+            inputs:
+              secureFile: makzeo-kubeconfig
+          - script: bash ci/scripts/check-prometheus.sh
+            displayName: Collecte des métriques et alertes critiques
+            env:
+              KUBECONFIG: $(kubeconfig.secureFilePath)

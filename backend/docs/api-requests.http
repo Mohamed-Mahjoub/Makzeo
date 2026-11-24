@@ -6,7 +6,7 @@
 @supplierUrl = http://localhost:8083
 @stockUrl = http://localhost:8084
 @reportingUrl = http://localhost:8085
-@adminPassword = Admin@12345
+@adminPassword = A_DEFINIR
 
 ### Initialisation : suffixe unique pour cette exécution
 GET {{authUrl}}/actuator/health

@@ -5,12 +5,22 @@ target/
 node_modules/
 dist/
 .angular/
-# Outils
+# IDE / système
 .idea/
 *.iml
 .vscode/
 .DS_Store
 *.log
-# Secrets locaux
+# Secrets locaux (jamais dans Git)
 .env
-age.agekey
+infra/devops-vm/.env
+*kubeconfig*
+!infra/vmware/create-ci-kubeconfig.sh
+# Analyse SonarQube locale
+.scannerwork/
+.sonar/
+
+# Python
+__pycache__/
+*.pyc
+backend/scripts/off_tunisie.json

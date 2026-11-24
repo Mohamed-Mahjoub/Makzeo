@@ -16,7 +16,7 @@ const C = 2 * Math.PI * R;
   template: `
     <div class="donut">
       <svg viewBox="0 0 160 160" class="donut__svg" role="img" [attr.aria-label]="centerLabel()">
-        <circle cx="80" cy="80" [attr.r]="radius" fill="none" stroke="#eef2f7" stroke-width="22" />
+        <circle cx="80" cy="80" [attr.r]="radius" fill="none" class="donut__track" stroke-width="22" />
         @for (s of arcs(); track s.label) {
           <circle cx="80" cy="80" [attr.r]="radius" fill="none" [attr.stroke]="s.color" stroke-width="22"
                   [attr.stroke-dasharray]="s.dash" [attr.stroke-dashoffset]="s.offset"

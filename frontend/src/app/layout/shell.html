@@ -1,18 +1,14 @@
 <div class="shell" [class.shell--collapsed]="collapsed()">
   <aside class="sidebar">
     <div class="sidebar__brand">
-      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-        <rect width="32" height="32" rx="7" fill="#0f2742" />
-        <path d="M8 11l8-4 8 4v10l-8 4-8-4zM8 11l8 4 8-4M16 15v10" fill="none" stroke="#5eead4" stroke-width="2.2"
-              stroke-linejoin="round" />
-      </svg>
+      <app-logo [size]="34" />
       <span class="sidebar__name">Makzeo</span>
     </div>
     <nav>
       @for (section of menu(); track section.title) {
         <div class="sidebar__section">{{ section.title }}</div>
         @for (item of section.items; track item.path) {
-          <a class="sidebar__link" [routerLink]="item.path" routerLinkActive="is-active" [title]="item.label">
+          <a class="sidebar__link" [routerLink]="item.path" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: item.path === '/achats' }" [title]="item.label">
             <app-icon [name]="item.icon" />
             <span>{{ item.label }}</span>
           </a>
@@ -28,6 +24,7 @@
         <app-icon name="menu" />
       </button>
       <div class="topbar__spacer"></div>
+      <app-theme-toggle />
       @if (settings.settings(); as s) {
         <a class="currency-chip" routerLink="/settings" [title]="'Devise : ' + s.currencyName">{{ s.currency }}</a>
       }

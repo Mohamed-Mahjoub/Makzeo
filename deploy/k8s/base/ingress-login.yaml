@@ -1,0 +1,21 @@
+# Route dédiée à la connexion, limitée à 10 requêtes par minute et par adresse IP (force brute)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stock-management-login
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rpm: "10"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "1"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stock.local
+      http:
+        paths:
+          - path: /api/auth/login
+            pathType: Exact
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8081

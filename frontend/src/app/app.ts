@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NotificationService } from './core/services/notification.service';
+import { ThemeService } from './core/services/theme.service';
 
 /** Composant racine : routeur + zone des notifications. */
 @Component({
@@ -20,4 +21,9 @@ import { NotificationService } from './core/services/notification.service';
 })
 export class App {
   protected readonly notifications = inject(NotificationService);
+
+  constructor() {
+    // thème appliqué dès le démarrage (choix mémorisé ou préférence du système)
+    inject(ThemeService);
+  }
 }

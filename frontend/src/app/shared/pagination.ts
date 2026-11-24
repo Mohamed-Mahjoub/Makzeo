@@ -7,7 +7,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   template: `
     @if (totalElements() > 0) {
       <div class="pagination">
-        <span class="muted">{{ totalElements() }} élément(s) — page {{ page() + 1 }} / {{ totalPages() || 1 }}</span>
+        <span class="muted">{{ totalElements() }} élément(s) · page {{ page() + 1 }} / {{ totalPages() || 1 }}</span>
         <div class="pagination__buttons">
           <button type="button" class="btn btn--ghost btn--sm" [disabled]="page() === 0"
                   (click)="pageChange.emit(page() - 1)">‹ Précédent</button>

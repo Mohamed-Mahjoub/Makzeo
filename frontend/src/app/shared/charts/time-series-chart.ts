@@ -88,7 +88,7 @@ export class TimeSeriesChart {
         w: Math.max(1, w - 0.8),
         h: Math.max(0, H - M.bottom - y),
         color: s.color,
-        title: `${labels[i]} — ${s.name} : ${v.toLocaleString('fr-FR')}`
+        title: `${labels[i]} · ${s.name} : ${v.toLocaleString('fr-FR')}`
       };
     }));
   });

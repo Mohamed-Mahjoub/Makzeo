@@ -1,0 +1,100 @@
+# Environnement on-premise : cluster kubeadm sur VMware (1 master, 2 workers).
+# Déployé par le pipeline Azure DevOps, qui remplace les tags "latest" par le numéro de build
+# (kustomize edit set image) et crée les Secrets stock-secrets et nexus-registry.
+#
+# Valeurs à adapter une seule fois (voir docs/05-infrastructure.md) :
+#   192.168.80.10:8083            adresse du registre Docker hébergé par Nexus (VM master + devops)
+#   makzeo.192.168.80.11.nip.io   nom d'hôte public de l'application (IP d'un worker)
+#   mail.192.168.80.11.nip.io     interface de Mailpit (courriels de démonstration)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: stock-management
+
+resources:
+  - ../../base
+  - hpa.yaml
+  - pdb.yaml
+  - mailpit-ingress.yaml
+  - monitoring/servicemonitor.yaml
+  - monitoring/prometheusrule.yaml
+
+labels:
+  - pairs:
+      environment: onprem
+    includeSelectors: false
+
+# Tableau de bord Grafana chargé automatiquement (label grafana_dashboard)
+configMapGenerator:
+  - name: grafana-dashboard-makzeo
+    files:
+      - monitoring/makzeo-overview.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"
+
+images:
+  - name: stock-management/auth-service
+    newName: 192.168.80.10:8083/makzeo/auth-service
+    newTag: latest
+  - name: stock-management/product-service
+    newName: 192.168.80.10:8083/makzeo/product-service
+    newTag: latest
+  - name: stock-management/supplier-service
+    newName: 192.168.80.10:8083/makzeo/supplier-service
+    newTag: latest
+  - name: stock-management/stock-service
+    newName: 192.168.80.10:8083/makzeo/stock-service
+    newTag: latest
+  - name: stock-management/reporting-service
+    newName: 192.168.80.10:8083/makzeo/reporting-service
+    newTag: latest
+  - name: stock-management/procurement-service
+    newName: 192.168.80.10:8083/makzeo/procurement-service
+    newTag: latest
+  - name: stock-management/frontend
+    newName: 192.168.80.10:8083/makzeo/frontend
+    newTag: latest
+
+patches:
+  # Identifiants du registre Nexus pour télécharger les images
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+          - name: nexus-registry
+  # Nom d'hôte public de l'application
+  - target:
+      kind: Ingress
+      name: stock-management
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: makzeo.192.168.80.11.nip.io
+  - target:
+      kind: Ingress
+      name: stock-management-login
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: makzeo.192.168.80.11.nip.io
+  - target:
+      kind: Ingress
+      name: stock-management-procurement
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: makzeo.192.168.80.11.nip.io
+  # Origine autorisée par CORS : identique à l'adresse de l'Ingress
+  - target:
+      kind: ConfigMap
+      name: app-config
+    patch: |-
+      - op: replace
+        path: /data/CORS_ALLOWED_ORIGINS
+        value: http://makzeo.192.168.80.11.nip.io
+      - op: replace
+        path: /data/APP_URL
+        value: http://makzeo.192.168.80.11.nip.io

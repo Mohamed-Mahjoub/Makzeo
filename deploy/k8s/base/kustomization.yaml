@@ -16,5 +16,9 @@ resources:
   - supplier-service.yaml
   - stock-service.yaml
   - reporting-service.yaml
+  - procurement-service.yaml
+  - mailpit.yaml
   - frontend.yaml
   - ingress.yaml
+  - ingress-login.yaml
+  - ingress-procurement.yaml

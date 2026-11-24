@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# Image d'exécution construite à partir d'un JAR déjà compilé et testé par le pipeline.
+# Contexte de build : un dossier contenant uniquement app.jar.
+#   docker build -f backend/Dockerfile.runtime --build-arg SERVICE=auth-service -t <registre>/makzeo/auth-service:<tag> <dossier>
+# ---------------------------------------------------------------------------
+
+# --- Étape 1 : extraction des couches Spring Boot ---------------------------
+FROM eclipse-temurin:21-jre AS extract
+WORKDIR /workspace
+COPY app.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted
+
+# --- Étape 2 : image d'exécution ------------------------------------------
+FROM eclipse-temurin:21-jre
+ARG SERVICE
+ARG VERSION=dev
+LABEL org.opencontainers.image.title="${SERVICE}" \
+      org.opencontainers.image.description="Makzeo - ${SERVICE}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.vendor="Makzeo"
+
+RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app --home /app app
+WORKDIR /app
+
+# Couches Spring Boot : les dépendances changent rarement -> meilleur cache Docker
+COPY --from=extract /workspace/extracted/dependencies/ ./
+COPY --from=extract /workspace/extracted/spring-boot-loader/ ./
+COPY --from=extract /workspace/extracted/snapshot-dependencies/ ./
+COPY --from=extract /workspace/extracted/application/ ./
+
+# UID numérique : permet à Kubernetes de vérifier runAsNonRoot
+USER 1001
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

@@ -1,12 +1,13 @@
 {
   "name": "stock-management-frontend",
   "version": "1.0.0",
-  "description": "Frontend Angular de l'application de gestion de produits et de stock (PFE)",
+  "description": "Makzeo - interface web (Angular)",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "build:prod": "ng build --configuration production"
   },
   "private": true,
   "dependencies": {

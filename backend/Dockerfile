@@ -1,6 +1,7 @@
 # ---------------------------------------------------------------------------
-# Dockerfile unique pour tous les microservices (build multi-étapes, compatible Docker et Kaniko).
-#   docker build --build-arg SERVICE=product-service -t stock/product-service .
+# Dockerfile unique pour tous les microservices (build multi-étapes, utilisé par docker compose).
+#   docker build --build-arg SERVICE=product-service -t makzeo/product-service .
+# En intégration continue, Dockerfile.runtime réutilise le JAR déjà testé (build once, deploy many).
 # ---------------------------------------------------------------------------
 
 # --- Étape 1 : compilation Maven ------------------------------------------
@@ -16,6 +17,7 @@ COPY product-service/pom.xml product-service/
 COPY supplier-service/pom.xml supplier-service/
 COPY stock-service/pom.xml stock-service/
 COPY reporting-service/pom.xml reporting-service/
+COPY procurement-service/pom.xml procurement-service/
 RUN mvn -B -q -pl ${SERVICE} -am dependency:go-offline -DskipTests || true
 
 COPY common-lib common-lib
@@ -27,7 +29,8 @@ RUN mvn -B -pl ${SERVICE} -am package -DskipTests \
 FROM eclipse-temurin:21-jre
 ARG SERVICE
 LABEL org.opencontainers.image.title="${SERVICE}" \
-      org.opencontainers.image.description="Stock Management - ${SERVICE}"
+      org.opencontainers.image.description="Makzeo - ${SERVICE}" \
+      org.opencontainers.image.vendor="Makzeo"
 
 RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app --home /app app
 WORKDIR /app

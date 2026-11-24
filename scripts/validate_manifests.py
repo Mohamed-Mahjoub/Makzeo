@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
 """
-Validation hors-ligne des manifests (sans cluster) :
-  - rend les overlays Kustomize (sous-ensemble utilisé par le projet : resources, namespace,
-    labels, images, secretGenerator, patches JSON6902) ;
+Validation hors-ligne des manifests (sans cluster), exécutée par le pipeline :
+  - rend l'overlay Kustomize onprem (kustomize ou kubectl kustomize, rendu interne à défaut) ;
   - vérifie la cohérence Kubernetes : sélecteurs, ports nommés, clés de ConfigMap/Secret,
-    backends d'Ingress, cibles des HPA / PDB ;
-  - vérifie la cohérence Tekton : tâches, paramètres, workspaces, résultats, runAfter, triggers ;
-  - analyse la syntaxe YAML des manifests FluxCD.
-Usage : python scripts/validate_manifests.py    (nécessite PyYAML : pip install pyyaml)
+    backends d'Ingress, cibles des HPA / PDB / NetworkPolicy ;
+  - vérifie la supervision : ServiceMonitor, règles d'alerte, tableau de bord Grafana ;
+  - vérifie la structure du pipeline azure-pipelines.yml (dépendances entre stages).
+Usage : python3 scripts/validate_manifests.py    (nécessite PyYAML)
 """
 import copy
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Secrets créés par le pipeline au moment du déploiement (jamais stockés dans Git)
+EXTERNAL_SECRETS = {
+    "stock-secrets": {"POSTGRES_USER": "", "POSTGRES_PASSWORD": "", "JWT_SECRET": "", "ADMIN_PASSWORD": ""},
+    "nexus-registry": {".dockerconfigjson": ""},
+}
 errors = []
 checks = 0
 
@@ -92,6 +100,20 @@ def build(directory):
             err(f"{kfile}: ressource introuvable {res}")
     for gen in k.get("secretGenerator", []):
         data = dict(l.split("=", 1) for l in gen.get("literals", []))
+        for env_file in gen.get("envs", []):
+            # secrets.env n'est pas versionné : on contrôle les clés avec le modèle secrets.env.example
+            env_path = os.path.join(directory, env_file)
+            if not os.path.isfile(env_path) and os.path.isfile(env_path + ".example"):
+                env_path += ".example"
+            if not os.path.isfile(env_path):
+                err(f"{kfile}: fichier de secrets introuvable {env_file} (ni {env_file}.example)")
+                continue
+            with open(env_path, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        data[key.strip()] = value.strip()
         out.append({"apiVersion": "v1", "kind": "Secret", "metadata": {"name": gen["name"]}, "stringData": data})
     ns = k.get("namespace")
     for d in out:
@@ -126,6 +148,15 @@ def build(directory):
     return copy.deepcopy(out)
 
 
+def build_with_kustomize(directory):
+    """Rend l'overlay avec kustomize (ou kubectl kustomize) ; repli sur le rendu interne sinon."""
+    for cmd in (["kustomize", "build", directory], ["kubectl", "kustomize", directory]):
+        if shutil.which(cmd[0]):
+            out = subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
+            return [d for d in yaml.safe_load_all(out) if d]
+    return build(directory)
+
+
 def pod_spec(d):
     if d["kind"] in ("Deployment", "StatefulSet"):
         return d["spec"]["template"]["spec"]
@@ -151,6 +182,13 @@ def check_k8s(docs, label):
         names.add(key)
         ok()
     configmaps, secrets = by("ConfigMap"), by("Secret")
+    for name, keys in EXTERNAL_SECRETS.items():
+        secrets.setdefault(name, {"stringData": keys})
+    for w in [d for d in docs if d["kind"] in ("Deployment", "StatefulSet")]:
+        for ps in pod_spec(w).get("imagePullSecrets", []):
+            if ps["name"] not in secrets:
+                err(f"[{label}] {w['metadata']['name']}: imagePullSecret {ps['name']} inconnu")
+            ok()
     workloads = list(by("Deployment").values()) + list(by("StatefulSet").values())
     for w in workloads:
         name = w["metadata"]["name"]
@@ -184,7 +222,7 @@ def check_k8s(docs, label):
                                 err(f"[{label}] {name}: {kind} {r['name']} introuvable")
                         else:
                             data = {**src.get("data", {}), **src.get("stringData", {})}
-                            if r["key"] not in data:
+                            if r["key"] not in data and not r.get("optional"):
                                 err(f"[{label}] {name}: clé {r['key']} absente de {r['name']}")
                         ok()
             for vm in c.get("volumeMounts", []):
@@ -232,126 +270,69 @@ def check_k8s(docs, label):
         ok()
 
 
-# ---------------------------------------------------------------- contrôles Tekton
-def check_tekton(docs):
-    tasks = {d["metadata"]["name"]: d for d in docs if d["kind"] == "Task"}
-    pipelines = {d["metadata"]["name"]: d for d in docs if d["kind"] == "Pipeline"}
-    for t in tasks.values():
-        declared = {p["name"] for p in t["spec"].get("params", [])}
-        wss = {w["name"] for w in t["spec"].get("workspaces", [])}
-        res = {r["name"] for r in t["spec"].get("results", [])}
-        text = yaml.safe_dump(t["spec"])
-        for p in re.findall(r"\$\(params\.([\w-]+)\)", text):
-            if p not in declared:
-                err(f"Task {t['metadata']['name']}: paramètre non déclaré {p}")
-        for w in re.findall(r"\$\(workspaces\.([\w-]+)\.", text):
-            if w not in wss:
-                err(f"Task {t['metadata']['name']}: workspace non déclaré {w}")
-        for r in re.findall(r"\$\(results\.([\w-]+)\.path\)", text):
-            if r not in res:
-                err(f"Task {t['metadata']['name']}: résultat non déclaré {r}")
+# ---------------------------------------------------------------- contrôles supervision
+def check_monitoring(docs, label):
+    services = [d for d in docs if d["kind"] == "Service"]
+    for sm in (d for d in docs if d["kind"] == "ServiceMonitor"):
+        sel = sm["spec"]["selector"]["matchLabels"]
+        targets = [s for s in services if all(s["metadata"].get("labels", {}).get(k) == v for k, v in sel.items())]
+        if not targets:
+            err(f"[{label}] ServiceMonitor {sm['metadata']['name']}: aucun Service sélectionné")
+        for ep in sm["spec"]["endpoints"]:
+            for s in targets:
+                if ep["port"] not in [p.get("name") for p in s["spec"]["ports"]]:
+                    err(f"[{label}] ServiceMonitor: port {ep['port']} absent du Service {s['metadata']['name']}")
+                ok()
         ok()
-    for pl in pipelines.values():
-        pparams = {p["name"] for p in pl["spec"]["params"]}
-        pws = {w["name"] for w in pl["spec"]["workspaces"]}
-        names = {t["name"] for t in pl["spec"]["tasks"]}
-        for pt in pl["spec"]["tasks"]:
-            task = tasks.get(pt["taskRef"]["name"])
-            if not task:
-                err(f"Pipeline: tâche {pt['taskRef']['name']} introuvable")
-                continue
-            tparams = {p["name"]: p for p in task["spec"].get("params", [])}
-            given = {p["name"] for p in pt.get("params", [])}
-            for g in given - set(tparams):
-                err(f"Pipeline/{pt['name']}: paramètre inconnu {g}")
-            for n, p in tparams.items():
-                if "default" not in p and n not in given:
-                    err(f"Pipeline/{pt['name']}: paramètre obligatoire {n} non fourni")
-            twss = {w["name"]: w for w in task["spec"].get("workspaces", [])}
-            bound = {w["name"] for w in pt.get("workspaces", [])}
-            for w in pt.get("workspaces", []):
-                if w["name"] not in twss:
-                    err(f"Pipeline/{pt['name']}: workspace inconnu {w['name']}")
-                if w["workspace"] not in pws:
-                    err(f"Pipeline/{pt['name']}: workspace pipeline inconnu {w['workspace']}")
-            for n, w in twss.items():
-                if not w.get("optional") and n not in bound:
-                    err(f"Pipeline/{pt['name']}: workspace obligatoire {n} non lié")
-            for r in pt.get("runAfter", []):
-                if r not in names:
-                    err(f"Pipeline/{pt['name']}: runAfter {r} inconnu")
-            text = yaml.safe_dump(pt)
-            for p in re.findall(r"\$\(params\.([\w-]+)\)", text):
-                if p not in pparams:
-                    err(f"Pipeline/{pt['name']}: paramètre pipeline inconnu {p}")
-            for tname, rname in re.findall(r"\$\(tasks\.([\w-]+)\.results\.([\w-]+)\)", text):
-                src = next((t for t in pl["spec"]["tasks"] if t["name"] == tname), None)
-                if not src or rname not in {r["name"] for r in tasks[src["taskRef"]["name"]]["spec"].get("results", [])}:
-                    err(f"Pipeline/{pt['name']}: résultat {tname}.{rname} introuvable")
+    for rule in (d for d in docs if d["kind"] == "PrometheusRule"):
+        for group in rule["spec"]["groups"]:
+            for r in group["rules"]:
+                for field in ("alert", "expr", "labels", "annotations"):
+                    if field not in r:
+                        err(f"[{label}] PrometheusRule {group['name']}: champ {field} manquant")
+                if r.get("expr", "").count("(") != r.get("expr", "").count(")"):
+                    err(f"[{label}] PrometheusRule {r.get('alert')}: parenthèses déséquilibrées")
+                ok()
+    for cm in (d for d in docs if d["kind"] == "ConfigMap" and d["metadata"].get("labels", {}).get("grafana_dashboard") == "1"):
+        for name, content in cm.get("data", {}).items():
+            try:
+                dash = json.loads(content)
+                if not dash.get("panels"):
+                    err(f"[{label}] tableau de bord {name}: aucun panneau")
+            except ValueError as e:
+                err(f"[{label}] tableau de bord {name}: JSON invalide ({e})")
             ok()
-    tts = {d["metadata"]["name"]: d for d in docs if d["kind"] == "TriggerTemplate"}
-    tbs = {d["metadata"]["name"]: d for d in docs if d["kind"] == "TriggerBinding"}
-    for tt in tts.values():
-        declared = {p["name"] for p in tt["spec"]["params"]}
-        for p in re.findall(r"\$\(tt\.params\.([\w-]+)\)", yaml.safe_dump(tt["spec"])):
-            if p not in declared:
-                err(f"TriggerTemplate: paramètre {p} non déclaré")
-        for rt in tt["spec"]["resourcetemplates"]:
-            pl = pipelines.get(rt["spec"]["pipelineRef"]["name"])
-            if not pl:
-                err("TriggerTemplate: pipeline introuvable")
-                continue
-            given = {p["name"] for p in rt["spec"]["params"]}
-            for p in pl["spec"]["params"]:
-                if "default" not in p and p["name"] not in given:
-                    err(f"TriggerTemplate: paramètre pipeline {p['name']} non fourni")
-            wss = {w["name"] for w in rt["spec"]["workspaces"]}
-            for w in pl["spec"]["workspaces"]:
-                if not w.get("optional") and w["name"] not in wss:
-                    err(f"TriggerTemplate: workspace {w['name']} non fourni")
+
+
+# ---------------------------------------------------------------- contrôles du pipeline
+def check_pipeline(path):
+    with open(path, encoding="utf-8") as f:
+        pipeline = yaml.safe_load(f)
+    names = [s["stage"] for s in pipeline.get("stages", [])]
+    for stage in pipeline.get("stages", []):
+        for dep in ([stage["dependsOn"]] if isinstance(stage.get("dependsOn"), str) else stage.get("dependsOn", [])):
+            if dep not in names:
+                err(f"[pipeline] stage {stage['stage']}: dépendance inconnue {dep}")
+            ok()
+        if not stage.get("jobs"):
+            err(f"[pipeline] stage {stage['stage']}: aucun job")
         ok()
-    for el in [d for d in docs if d["kind"] == "EventListener"]:
-        for trg in el["spec"]["triggers"]:
-            if trg["template"]["ref"] not in tts:
-                err("EventListener: template introuvable")
-            for b in trg["bindings"]:
-                binding = tbs.get(b["ref"])
-                if not binding:
-                    err("EventListener: binding introuvable")
-                    continue
-                tt = tts[trg["template"]["ref"]]
-                ttp = {p["name"]: p for p in tt["spec"]["params"]}
-                for p in binding["spec"]["params"]:
-                    if p["name"] not in ttp:
-                        err(f"TriggerBinding: paramètre {p['name']} absent du template")
-                missing = [n for n, p in ttp.items() if "default" not in p and
-                           n not in {q["name"] for q in binding["spec"]["params"]}]
-                if missing:
-                    err(f"TriggerTemplate: paramètres sans valeur {missing}")
-            ok()
+    return names
 
 
 def main():
-    for overlay in ("dev", "prod"):
-        docs = build(os.path.join(ROOT, "deploy/k8s/overlays", overlay))
-        check_k8s(docs, overlay)
-        print(f"overlay {overlay:4s} : {len(docs)} ressources rendues")
-    tekton = build(os.path.join(ROOT, "deploy/tekton"))
-    tekton += load_docs(os.path.join(ROOT, "deploy/tekton/pipelinerun.yaml"))
-    check_tekton(tekton)
-    print(f"tekton      : {len(tekton)} ressources")
-    flux = build(os.path.join(ROOT, "deploy/flux")) + load_docs(os.path.join(ROOT, "deploy/flux/notifications.yaml"))
-    for d in flux:
-        if d["kind"] == "Kustomization" and not os.path.isfile(os.path.join(ROOT, d["spec"]["path"], "kustomization.yaml")):
-            err(f"Flux {d['metadata']['name']}: chemin {d['spec']['path']} sans kustomization.yaml")
-        ok()
-    print(f"flux        : {len(flux)} ressources")
+    docs = build_with_kustomize(os.path.join(ROOT, "deploy/k8s/overlays/onprem"))
+    check_k8s(docs, "onprem")
+    check_monitoring(docs, "onprem")
+    print(f"overlay onprem : {len(docs)} ressources rendues")
+    stages = check_pipeline(os.path.join(ROOT, "azure-pipelines.yml"))
+    print(f"pipeline       : {len(stages)} stages ({', '.join(stages)})")
     if errors:
-        print(f"\n{len(errors)} ERREUR(S) :")
+        print(f"\n{len(errors)} erreur(s) :")
         for e in errors:
-            print(" -", e)
+            print("  - " + e)
         sys.exit(1)
-    print(f"\nOK : {checks} vérifications, aucune erreur.")
+    print(f"\nOK : {checks} contrôles réussis")
 
 
 if __name__ == "__main__":

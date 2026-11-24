@@ -1,0 +1,21 @@
+# Route du module achats : délai de réponse allongé (lecture d'un devis par l'agent IA)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stock-management-procurement
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "180"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "180"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stock.local
+      http:
+        paths:
+          - path: /api/procurement
+            pathType: Prefix
+            backend:
+              service:
+                name: procurement-service
+                port:
+                  number: 8086

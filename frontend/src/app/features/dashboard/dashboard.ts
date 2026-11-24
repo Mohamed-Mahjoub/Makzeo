@@ -107,7 +107,7 @@ export class DashboardPage {
     return [
       { name: 'Entrées', color: PALETTE.teal, values: flows.map((f) => f.entries), kind: 'bar' },
       { name: 'Sorties', color: PALETTE.primary, values: exits, kind: 'bar' },
-      { name: 'Sorties — moyenne mobile 7 j', color: PALETTE.amber, values: movingAverage, kind: 'line' }
+      { name: 'Sorties (moyenne mobile 7 j)', color: PALETTE.amber, values: movingAverage, kind: 'line' }
     ];
   });
 
