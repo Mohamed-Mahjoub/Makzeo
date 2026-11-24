@@ -164,7 +164,9 @@ code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: .85
   color: var(--primary); flex-shrink: 0; transition: transform .3s var(--ease); }
 .kpi:hover .kpi__icon { transform: scale(1.08) rotate(-4deg); }
 .kpi__label { color: var(--muted); font-size: .78rem; font-weight: 500; }
-.kpi__value { font-size: 1.55rem; font-weight: 750; margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.kpi__body { min-width: 0; }
+.kpi__value { font-size: clamp(1.1rem, 1.35vw, 1.55rem); font-weight: 750; margin-top: 2px; font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em; overflow-wrap: anywhere; }
 .kpi__hint { color: var(--muted); font-size: .75rem; margin-top: 2px; }
 .kpi--success { --kpi: var(--success); } .kpi--success .kpi__icon { background: var(--success-50); color: var(--success); }
 .kpi--warning { --kpi: var(--warning); } .kpi--warning .kpi__icon { background: var(--warning-50); color: var(--warning); }
