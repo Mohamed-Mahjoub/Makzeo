@@ -18,7 +18,9 @@ Deux cas réels pour le module IA (prix des offres = prix réellement publiés) 
   1. Toner HP 85A (CE285A) : acheté 389 DT TTC chez MyTEK, publié à 288 DT chez Tunewtec
      -> recommandation « changer de fournisseur » (-26 %) et demande de prix prête à valider.
   2. Rame Navigator A4 80 g : 5 offres réelles, dont 3 articles ÉQUIVALENTS (Archer, Copy Laser,
-     Everyday) ; historique en hausse -> prédiction de prix et « achat anticipé ».
+     Everyday) ; hausse modérée prédite (~+4 %), inférieure au coût de stockage : pas d'achat anticipé.
+  3. SSD Kingston A400 480 Go (369 DT chez MyTEK) : forte hausse simulée (mémoire flash) -> prédiction
+     d'environ +10 % à 3 mois et recommandation « achat anticipé ».
 
 Usage (PowerShell : $env:ADMIN_PASSWORD = "...") :
     python backend/scripts/seed_real_catalog.py --gateway http://localhost:4200
@@ -77,6 +79,8 @@ PRODUCTS = [
      P + "237658/flash-disk-type-c-kingston-data-traveler-70-128gb-noir", 6),
     ("Informatique", "SDK-DUAL-64", "Clé USB SanDisk Ultra Dual Drive Luxe 64 Go Type-C", "SanDisk", 44, "MYTEK",
      P + "214344/cle-usb-sandisk-ultra-dual-drive-luxe-64-go-usb-type-c-gris", 6),
+    ("Informatique", "SA400S37-480G", "Disque SSD interne Kingston A400 480 Go 2,5 pouces SATA", "Kingston", 369,
+     "MYTEK", P + "73324/kingston-technology-a400-2-5-480-gb-serie-ata-iii-tlc-sa400s37-480g", 5),
     ("Informatique", "BLK-HDMI-2M", "Câble HDMI Belkin 2 m", "Belkin", 35, "TUNISIANET",
      P + "125341/belkin-hdmi-hdmi-2m-cable-hdmi-hdmi-type-a-standard-noir", 8),
     ("Informatique", "BLK-HDMI-5M", "Câble HDMI Belkin 5 m", "Belkin", 55, "TUNISIANET",
@@ -187,6 +191,12 @@ CASES = {
              "IDENTICAL", 389, 2, 5),
         ],
         "rfq_to": "Tunewtec",  # demande de prix prête à valider : confirmer prix et délai pour 36 toners
+    },
+    # 3. SSD Kingston A400 : forte hausse des prix de la mémoire flash -> « achat anticipé »
+    "SA400S37-480G": {
+        "history": {"supplier": "MyTEK", "start": 140.6, "monthly_qty": 10},  # +3,5 %/mois, dernier = 369 TTC
+        "stock": (70, 60),  # consommation 10/mois, 10 en stock
+        "offers": [],
     },
     "NAV-A4-80-500": {
         "history": {"supplier": "SpaceNet", "start": 7.1, "monthly_qty": 70, "season": 0.01},  # hausse ~1,7 %/mois

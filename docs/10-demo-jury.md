@@ -14,7 +14,7 @@ python backend\scripts\seed_real_catalog.py --gateway http://localhost:8080
 
 | Donnée | Nature | Source |
 |---|---|---|
-| 54 articles (informatique, fournitures de bureau, électricité, quincaillerie) | **Réels** : marques, modèles, références constructeur | Revendeurs tunisiens |
+| 55 articles (informatique, fournitures de bureau, électricité, quincaillerie) | **Réels** : marques, modèles, références constructeur | Revendeurs tunisiens |
 | Prix publics TTC | **Réels**, relevés le 24/11/2026 (URL dans chaque fiche) | primini.tn, SpaceNet, MyTEK, Tunisianet |
 | Fournisseurs du catalogue | **Réels** (nom, site web) | SpaceNet, MyTEK, Tunisianet, Tunewtec, NUMEDIA, Carrefour, Oxtek |
 | Offres des deux cas IA | **Réelles** (prix publiés par chaque revendeur) | primini.tn et sites des revendeurs |
@@ -59,12 +59,18 @@ Choisir l'article **CE285A**. Offres réelles publiées le 24/11/2026 :
 
 ### 4. Anticiper une hausse : la prédiction de prix (Achats IA > Prix et prévisions)
 
-Choisir la **Rame Navigator A4 80 g** :
+Choisir le **SSD Kingston A400 480 Go** (369 DT TTC chez MyTEK) :
 
-- 24 mois d'historique (courbe), tendance d'environ **+1,7 % par mois**, inflation 5,5 %.
-- Prédiction à 3 mois : **environ +4 %**, confiance **élevée** (R² proche de 1, 24 mois d'historique).
-- Recommandation **Achat anticipé** : quantité optimale (consommation de 70 rames par mois, coût de
-  stockage 1,5 % par mois), coût maintenant vs plus tard, date « acheter avant ».
+- 24 mois d'historique d'achats (simulé), en forte hausse, comme le marché de la mémoire flash.
+- Prédiction à 3 mois : **environ +10 %**, confiance **élevée**.
+- Recommandation **Achat anticipé** : environ 50 unités à acheter maintenant (10 en stock,
+  consommation de 10 par mois), coût maintenant vs plus tard, coût de stockage (1,5 % par mois),
+  gain net et date « acheter avant ».
+
+Puis la **Rame Navigator A4 80 g** : hausse prédite d'environ +4 % seulement. Le module **ne
+recommande pas** de stocker : la hausse ne couvre pas le coût de stockage (1,5 % par mois pendant
+3 mois). Bon argument devant le jury : l'outil ne pousse pas à acheter, il calcule si stocker est
+rentable.
 
 ### 5. Les articles équivalents (Comparaison des offres, même article)
 
