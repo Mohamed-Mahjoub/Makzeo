@@ -62,3 +62,14 @@ jobs:
           sudo mv kustomize /usr/local/bin/
       - run: pip install pyyaml
       - run: python3 scripts/validate_manifests.py
+
+  images:
+    name: Images Docker (construction)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Le réacteur Maven charge tous les modules : construire une image valide le Dockerfile commun
+      - name: Image procurement-service
+        run: docker build --build-arg SERVICE=procurement-service -t makzeo/procurement-service:ci backend
+      - name: Image frontend
+        run: docker build -t makzeo/frontend:ci frontend

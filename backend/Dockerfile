@@ -17,6 +17,7 @@ COPY product-service/pom.xml product-service/
 COPY supplier-service/pom.xml supplier-service/
 COPY stock-service/pom.xml stock-service/
 COPY reporting-service/pom.xml reporting-service/
+COPY procurement-service/pom.xml procurement-service/
 RUN mvn -B -q -pl ${SERVICE} -am dependency:go-offline -DskipTests || true
 
 COPY common-lib common-lib
