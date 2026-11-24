@@ -47,7 +47,8 @@ services:
     image: sonatype/nexus3:latest
     restart: unless-stopped
     environment:
-      INSTALL4J_ADD_VM_PARAMS: "-Xms1g -Xmx1g -XX:MaxDirectMemorySize=1g"
+      # Mémoire réduite pour un master de 6 Go (PC de 16 Go)
+      INSTALL4J_ADD_VM_PARAMS: "-Xms768m -Xmx768m -XX:MaxDirectMemorySize=512m"
     volumes:
       - nexus_data:/nexus-data
     ports:

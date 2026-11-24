@@ -57,6 +57,21 @@ images:
     newTag: latest
 
 patches:
+  # Laboratoire sur un PC de 16 Go (workers de 3 Go) : réservations mémoire réduites pour les
+  # microservices Java. Le tas reste à 75 % de la limite (MaxRAMPercentage), soit environ 480 Mo.
+  - target:
+      kind: Deployment
+      name: "(auth|product|supplier|stock|reporting|procurement)-service"
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 640Mi
   # Identifiants du registre Nexus pour télécharger les images
   - target:
       kind: Deployment
