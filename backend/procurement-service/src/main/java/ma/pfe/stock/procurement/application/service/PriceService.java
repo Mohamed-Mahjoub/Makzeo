@@ -116,8 +116,13 @@ public class PriceService {
     public Optional<PricePrediction> predict(ProductInfo product, Double marketSignalPct) {
         PriceForecaster.Settings settings = new PriceForecaster.Settings(properties.forecastHorizonMonths(),
                 properties.annualInflationPct(), properties.marketSignalWeight());
-        return PriceForecaster.forecast(points.findByProduct(product.id()), LocalDate.now(zone), settings,
-                        marketSignalPct)
+        // Les devis sont des offres, pas des transactions : ils servent à la comparaison et au signal marché,
+        // mais pas à la série de prix (un mois de devis mêlant plusieurs fournisseurs fausserait tendance
+        // et saisonnalité).
+        List<PricePoint> series = points.findByProduct(product.id()).stream()
+                .filter(p -> p.source() != PriceSource.QUOTE)
+                .toList();
+        return PriceForecaster.forecast(series, LocalDate.now(zone), settings, marketSignalPct)
                 .map(f -> predictions.upsert(new PricePrediction(null, product.id(), product.reference(),
                         product.name(), Instant.now(), f.currentPrice(), f.predictedPrice(), f.changePct(),
                         f.horizonDays(), f.confidence(), f.level(), f.monthlyTrendPct(), f.seasonalityPct(),
