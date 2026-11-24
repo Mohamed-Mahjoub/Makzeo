@@ -6,5 +6,6 @@
   "/api/products": { "target": "http://localhost:8082", "secure": false },
   "/api/suppliers": { "target": "http://localhost:8083", "secure": false },
   "/api/stock": { "target": "http://localhost:8084", "secure": false },
-  "/api/reports": { "target": "http://localhost:8085", "secure": false }
+  "/api/reports": { "target": "http://localhost:8085", "secure": false },
+  "/api/procurement": { "target": "http://localhost:8086", "secure": false }
 }

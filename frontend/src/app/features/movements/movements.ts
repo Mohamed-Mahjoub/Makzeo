@@ -90,7 +90,7 @@ export class MovementsPage {
       reason: this.reason || null
     }).subscribe({
       next: (m) => {
-        this.notify.success(`${m.typeLabel} enregistrée : ${p.name} — stock ${m.quantityBefore} → ${m.quantityAfter}`);
+        this.notify.success(`${m.typeLabel} enregistrée : ${p.name} : stock ${m.quantityBefore} → ${m.quantityAfter}`);
         this.saving.set(false);
         this.quantity = null;
         this.documentReference = '';

@@ -53,3 +53,22 @@ spec:
           annotations:
             summary: "Mémoire JVM presque saturée sur {{ $labels.pod }}"
             description: "Le tas Java est utilisé à plus de 90 % depuis 10 minutes."
+    - name: makzeo-procurement
+      rules:
+        - alert: MakzeoProcurementWatchFailed
+          expr: |
+            sum(increase(makzeo_procurement_watch_runs_total{namespace="stock-management", status="failed"}[1d])) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "La veille fournisseurs mensuelle a échoué"
+            description: "Au moins une exécution de la veille IA a échoué ces dernières 24 heures (voir /achats et les journaux de procurement-service)."
+        - alert: MakzeoProcurementAiErrors
+          expr: |
+            sum(increase(makzeo_procurement_ai_call_seconds_count{namespace="stock-management", outcome="error"}[1h])) > 5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Erreurs répétées du moteur IA (API Claude)"
+            description: "Plus de 5 appels à l'API Claude en erreur sur la dernière heure : vérifier AI_API_KEY, le quota et l'accès réseau sortant."

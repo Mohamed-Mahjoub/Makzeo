@@ -3,3 +3,4 @@ CREATE DATABASE auth_db;
 CREATE DATABASE product_db;
 CREATE DATABASE supplier_db;
 CREATE DATABASE stock_db;
+CREATE DATABASE procurement_db;

@@ -1,0 +1,232 @@
+# procurement-service : module IA achats (veille fournisseurs, demandes de prix, prédiction des prix)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: procurement-service
+  labels:
+    app.kubernetes.io/name: procurement-service
+    app.kubernetes.io/component: backend
+spec:
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: procurement-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: procurement-service
+        app.kubernetes.io/component: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      # Crée la base procurement_db si elle n'existe pas (volume PostgreSQL initialisé avant ce module)
+      initContainers:
+        - name: create-database
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - >-
+              psql -h "$DB_HOST" -U "$PGUSER" -d postgres -tAc
+              "SELECT 1 FROM pg_database WHERE datname='procurement_db'" | grep -q 1
+              || psql -h "$DB_HOST" -U "$PGUSER" -d postgres -c 'CREATE DATABASE procurement_db'
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          securityContext:
+            runAsUser: 70
+            runAsGroup: 70
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: procurement-service
+          image: stock-management/procurement-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8086
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_PORT
+            - name: DB_NAME
+              value: procurement_db
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: JWT_SECRET
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: SWAGGER_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SWAGGER_ENABLED
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PRODUCT_SERVICE_URL
+            - name: SUPPLIER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SUPPLIER_SERVICE_URL
+            - name: STOCK_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: STOCK_SERVICE_URL
+            - name: APP_ZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PROCUREMENT_ZONE
+            - name: APP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_URL
+            - name: PROCUREMENT_BUYER_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PROCUREMENT_BUYER_EMAIL
+            - name: PROCUREMENT_MANAGER_EMAILS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PROCUREMENT_MANAGER_EMAILS
+            - name: SPRING_MAIL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SMTP_HOST
+            - name: SPRING_MAIL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SMTP_PORT
+            # Facultatifs : clé de l'API Claude et identifiants SMTP (absents = fonction désactivée)
+            - name: AI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: AI_API_KEY
+                  optional: true
+            - name: SPRING_MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: SMTP_USERNAME
+                  optional: true
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: SMTP_PASSWORD
+                  optional: true
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: procurement-service
+  labels:
+    app.kubernetes.io/name: procurement-service
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: procurement-service
+  ports:
+    - name: http
+      port: 8086
+      targetPort: http

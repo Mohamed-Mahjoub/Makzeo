@@ -10,6 +10,9 @@
 | 429 à la connexion | Plus de 10 tentatives par minute | Attendre une minute |
 | Erreur CORS dans le navigateur | Origine absente de `CORS_ALLOWED_ORIGINS` | Ajouter l'URL exacte utilisée dans le navigateur |
 | « Schema-validation: missing table » | Migration Flyway non appliquée | Consulter les journaux Flyway du service ; ne jamais modifier une migration déjà appliquée |
+| Achats IA : « IA non configurée » | `AI_API_KEY` vide | Renseigner la clé dans `.env` ou `makzeo-secrets` ; le module reste utilisable sans IA |
+| Achats IA : RFQ au statut « Échec » | SMTP injoignable ou refus d'authentification | Journaux de `procurement-service` ; vérifier `SMTP_*` ou Mailpit (<http://localhost:8025>) |
+| procurement-service : « database procurement_db does not exist » | Volume PostgreSQL antérieur au module | `docker compose up procurement-db-init` (Docker) ; en Kubernetes, le conteneur d'initialisation la crée |
 
 ## 8.2 Cluster Kubernetes
 

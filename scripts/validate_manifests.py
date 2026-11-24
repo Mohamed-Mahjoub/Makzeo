@@ -222,7 +222,7 @@ def check_k8s(docs, label):
                                 err(f"[{label}] {name}: {kind} {r['name']} introuvable")
                         else:
                             data = {**src.get("data", {}), **src.get("stringData", {})}
-                            if r["key"] not in data:
+                            if r["key"] not in data and not r.get("optional"):
                                 err(f"[{label}] {name}: clé {r['key']} absente de {r['name']}")
                         ok()
             for vm in c.get("volumeMounts", []):

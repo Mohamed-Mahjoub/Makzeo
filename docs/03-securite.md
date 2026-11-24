@@ -6,7 +6,7 @@
   (`JWT_VALIDITY`, 8 h par défaut). Chaque service valide lui-même le jeton (architecture sans
   état, pas de session serveur).
 - **Clé de signature** `JWT_SECRET` : obligatoire, 32 caractères minimum, identique pour les
-  5 services. Le démarrage échoue si elle est absente ou trop courte.
+  6 services. Le démarrage échoue si elle est absente ou trop courte.
 - **Mots de passe** hachés avec **BCrypt** ; jamais renvoyés par l'API.
 - **Contrôle d'accès par rôle** (`@PreAuthorize`) sur chaque route ; un compte désactivé ne peut
   plus se connecter.
@@ -59,7 +59,7 @@ variables d'environnement et n'apparaissent jamais dans les journaux.
 
 - **SonarQube** : Quality Gate « Makzeo » bloquante (fiabilité, sécurité et maintenabilité notées
   A sur le nouveau code, couverture ≥ 60 %, duplication ≤ 5 %).
-- **Trivy** : analyse des dépendances npm (HIGH/CRITICAL) et des 6 images (CRITICAL).
+- **Trivy** : analyse des dépendances npm (HIGH/CRITICAL) et des 7 images (CRITICAL).
 - **Nexus** : accès anonyme désactivé ; le pipeline utilise un compte technique aux droits limités.
 - **Branche principale protégée** (recommandé) : pull request obligatoire avec build de validation.
 - **Approbation manuelle** avant tout déploiement (environnement `makzeo-onprem`).

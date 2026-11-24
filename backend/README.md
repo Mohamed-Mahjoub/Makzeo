@@ -19,7 +19,7 @@ mvn verify -Pcoverage      # + rapports JaCoCo (target/site/jacoco)
 Images : `Dockerfile` (construction complète, utilisé par Docker Compose) et
 `Dockerfile.runtime` (image d'exécution à partir d'un JAR déjà testé, utilisé par le pipeline).
 
-Scripts : `scripts/e2e_test.py` (test de bout en bout), `scripts/seed_demo_data.py` (données de
+Scripts : `scripts/e2e_test.py` (test de bout en bout), `scripts/seed_large_catalog.py` (catalogue de 10 000 articles), `scripts/seed_demo_data.py` (données de
 démonstration). Requêtes d'exemple : `docs/api-requests.http`, `docs/makzeo.postman_collection.json`.
 
 Documentation : [../docs](../docs).
