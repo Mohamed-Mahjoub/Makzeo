@@ -203,7 +203,7 @@ const SIGNIFICANT = 3;
     tr.clickable:hover { background: var(--surface-2, #f8fafc); }
     tr.is-selected, tr.is-selected:hover { background: var(--primary-50); }
     .conf { display: flex; flex-direction: column; gap: 3px; min-width: 90px; }
-    .conf__bar { height: 6px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+    .conf__bar { height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; }
     .conf__fill { display: block; height: 100%; }
     .conf--HIGH { background: var(--success); }
     .conf--MEDIUM { background: var(--warning); }

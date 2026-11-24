@@ -49,7 +49,7 @@ public class ProcurementController {
     }
 
     @Operation(summary = "Rapport PDF de l'agent IA",
-            description = "Synthèse imprimable : économies, recommandations, meilleures offres, prédictions, méthode.")
+            description = "Synthèse imprimable : économies, recommandations, meilleures offres, prédictions.")
     @GetMapping(value = "/report/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize(Roles.CAN_REPORT)
     public ResponseEntity<byte[]> reportPdf() {

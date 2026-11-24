@@ -30,7 +30,7 @@ import java.util.Locale;
 
 /**
  * Rapport PDF imprimable « apport de l'agent IA achats » (OpenPDF, A4 portrait) : indicateurs, recommandations,
- * meilleures offres, prédictions de prix, économies par fournisseur et méthode.
+ * meilleures offres, prédictions de prix et économies par fournisseur.
  */
 @Component
 public class AiReportPdfRenderer implements AiReportRenderer {
@@ -84,7 +84,6 @@ public class AiReportPdfRenderer implements AiReportRenderer {
             comparisons(doc, writer, report);
             predictions(doc, writer, report);
             savingsBySupplier(doc, writer, report);
-            method(doc, writer, report);
             doc.close();
         } catch (DocumentException e) {
             throw new IllegalStateException("Génération du rapport PDF impossible", e);
@@ -281,25 +280,6 @@ public class AiReportPdfRenderer implements AiReportRenderer {
             bar.addCell(rest);
         }
         return bar;
-    }
-
-    private void method(Document doc, PdfWriter w, AiReport r) throws DocumentException {
-        section(doc, w, "Méthode et limites");
-        String[] lines = {
-            "Veille : l'API Claude recherche sur le web (marché " + r.marketName() + ") les fournisseurs proposant "
-                    + "le même article ou un équivalent ; tout nouveau fournisseur reste « candidat » jusqu'à validation.",
-            "Prix : un prix n'entre dans les calculs que s'il provient d'un achat réel, d'un devis reçu, d'une page web "
-                    + "citée ou du catalogue ; l'IA ne fixe aucun prix.",
-            "Prédiction : régression log-linéaire sur les prix mensuels payés, saisonnalité (24 mois et plus), "
-                    + "inflation de référence et signal du marché ; la confiance dépend de l'ajustement et de la "
-                    + "profondeur de l'historique.",
-            "Achat anticipé : quantité optimale calculée mois par mois en comparant la hausse évitée au coût de "
-                    + "stockage, dans la limite du budget ; aucune recommandation si stocker n'est pas rentable.",
-            "Économies : réalisées = recommandations acceptées ; potentielles = recommandations ouvertes."
-        };
-        for (String line : lines) {
-            bullet(doc, line);
-        }
     }
 
     // ------------------------------------------------------------------------------------------

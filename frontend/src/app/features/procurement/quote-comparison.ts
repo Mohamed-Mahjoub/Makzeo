@@ -280,7 +280,7 @@ function emptyQuote(productId: number): QuoteRequest {
     tbody tr { cursor: pointer; }
     .stars { color: #f59e0b; white-space: nowrap; letter-spacing: 1px; }
     .score { min-width: 110px; }
-    .score__bar { display: inline-block; width: 60px; height: 6px; background: #eef2f7; border-radius: 99px; margin-right: 6px;
+    .score__bar { display: inline-block; width: 60px; height: 6px; background: var(--track); border-radius: 99px; margin-right: 6px;
       vertical-align: middle; overflow: hidden; }
     .score__bar span { display: block; height: 100%; background: var(--primary); }
     .empty { text-align: center; padding: 48px 20px; color: var(--muted); }

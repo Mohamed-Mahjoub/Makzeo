@@ -46,15 +46,15 @@ export interface PriceBar {
     .pb__track { height: 16px; background: var(--surface-2, #f8fafc); border-radius: 4px; }
     .pb__bar { display: block; height: 100%; border-radius: 4px; }
     .pb__value { text-align: right; padding-right: 6px; font-size: .84rem; }
-    .pb__ref { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #0f172a; z-index: 1; pointer-events: none; }
+    .pb__ref { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed var(--text); z-index: 1; pointer-events: none; }
     .pb-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .78rem; color: var(--muted); margin-bottom: 10px; }
     .pb-legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
     .pb-scale { margin-left: auto; font-style: italic; }
     .t-best { background: #16a34a; }
-    .t-identical { background: #2563eb; }
+    .t-identical { background: var(--primary); }
     .t-equivalent { background: #7c3aed; }
-    .t-excluded { background: #cbd5e1; }
-    .t-ref { background: none; border-left: 2px dashed #0f172a; width: 0 !important; height: 12px !important; }
+    .t-excluded { background: var(--border-strong); }
+    .t-ref { background: none; border-left: 2px dashed var(--text); width: 0 !important; height: 12px !important; }
   `]
 })
 export class PriceBarsChart {

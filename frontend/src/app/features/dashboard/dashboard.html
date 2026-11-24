@@ -3,7 +3,7 @@
     <h1>Tableau de bord</h1>
     @if (data(); as d) {
       <p class="muted">Période du {{ d.from | date: 'dd/MM/yyyy' }} au {{ d.to | date: 'dd/MM/yyyy' }}
-        — mis à jour à {{ d.generatedAt | date: 'HH:mm' }}</p>
+        · mis à jour à {{ d.generatedAt | date: 'HH:mm' }}</p>
     }
   </div>
   <div class="page-header__actions filters">
@@ -93,7 +93,7 @@
                 {{ a.typeLabel }}</span>
               <div>
                 <strong>{{ a.productName }}</strong>
-                <small class="muted">{{ a.productReference }} — stock {{ a.quantity }} / seuil {{ a.threshold }}</small>
+                <small class="muted">{{ a.productReference }} · stock {{ a.quantity }} / seuil {{ a.threshold }}</small>
               </div>
               <time class="muted">{{ a.createdAt | date: 'dd/MM HH:mm' }}</time>
             </li>

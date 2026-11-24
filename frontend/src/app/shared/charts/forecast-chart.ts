@@ -49,7 +49,7 @@ const M = { left: 64, right: 22, top: 18, bottom: 34 };
       }
       @for (p of dots(); track p.i) {
         <circle [attr.cx]="p.x" [attr.cy]="p.y" [attr.r]="hover() === p.i ? 5 : 3" [attr.fill]="p.forecast ? '#d97706' : '#2563eb'"
-                stroke="#fff" stroke-width="1.5" />
+                class="fc__dot" stroke-width="1.5" />
       }
       @for (x of xLabels(); track x.i) {
         <text [attr.x]="x.x" [attr.y]="height - 12" text-anchor="middle" class="axis-label">{{ x.label }}</text>
@@ -73,6 +73,7 @@ const M = { left: 64, right: 22, top: 18, bottom: 34 };
   `,
   styles: [`
     .dash { background: repeating-linear-gradient(90deg, #d97706 0 6px, transparent 6px 10px) !important; height: 3px !important; }
+    .fc__dot { stroke: var(--surface); }
     .fc__cursor { stroke: #94a3b8; stroke-dasharray: 3 3; }
     .fc__tip { fill: #0f172a; opacity: .92; }
     .fc__tip-text { fill: #fff; font-size: 11px; }

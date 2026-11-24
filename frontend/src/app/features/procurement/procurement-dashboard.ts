@@ -120,7 +120,7 @@ import { PageHeader } from '../../shared/page-header';
     </section>
   `,
   styles: [`
-    .notice { background: var(--warning-50); border: 1px solid #fde68a; border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; }
+    .notice { background: var(--warning-50); border: 1px solid var(--warning-50); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; }
     .notice p { margin: 4px 0; }
     .stats-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
     .stats-row div { display: flex; flex-direction: column; }
