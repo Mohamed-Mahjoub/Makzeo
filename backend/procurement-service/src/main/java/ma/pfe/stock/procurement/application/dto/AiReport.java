@@ -13,7 +13,7 @@ import java.util.List;
  * @param currency    devise des montants (HT)
  */
 public record AiReport(Instant generatedAt, String generatedBy, String currency, String marketName,
-                       boolean aiEnabled, Kpis kpis, List<RecommendationLine> recommendations,
+                       boolean aiEnabled, String aiProvider, Kpis kpis, List<RecommendationLine> recommendations,
                        List<PredictionLine> predictions, List<ComparisonLine> comparisons,
                        List<AmountLine> savingsBySupplier, List<AmountLine> savingsByMonth, WatchRunView lastRun) {
 

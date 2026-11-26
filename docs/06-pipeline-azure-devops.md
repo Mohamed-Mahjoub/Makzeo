@@ -62,6 +62,7 @@ valeur pour la rendre secrète :
 | `NEXUS_CI_PASSWORD` | mot de passe du compte Nexus `ci-deployer` |
 | `SONAR_TOKEN` | jeton affiché par `configure-sonarqube.sh` |
 | `AI_API_KEY` | *facultatif* : clé de l'API Claude du module IA achats |
+| `SERPER_API_KEY`, `TAVILY_API_KEY` | *facultatifs* : veille web sans API Claude (Serper + Tavily) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | *facultatifs* : compte d'un SMTP réel (sinon Mailpit) |
 
 Onglet **Pipeline permissions** : autoriser le pipeline (ou le faire au premier lancement).

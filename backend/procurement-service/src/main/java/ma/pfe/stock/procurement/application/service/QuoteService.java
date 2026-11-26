@@ -90,10 +90,6 @@ public class QuoteService {
 
     /** Lecture d'un devis collé (courriel, texte d'un PDF) : proposition à vérifier avant enregistrement. */
     public MarketIntelligence.ExtractedQuote extract(Long productId, String text) {
-        if (!intelligence.enabled()) {
-            throw new BusinessRuleException("AI_DISABLED",
-                    "L'agent IA n'est pas configuré (clé AI_API_KEY) : saisissez le devis manuellement");
-        }
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Collez le texte du devis");
         }

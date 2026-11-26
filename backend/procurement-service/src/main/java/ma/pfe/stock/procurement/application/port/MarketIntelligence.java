@@ -10,13 +10,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Agent IA : recherche de fournisseurs sur le marché, tendance des prix, rédaction des demandes de prix et
+ * Agent achats : recherche de fournisseurs sur le marché, tendance des prix, rédaction des demandes de prix et
  * lecture des devis. Toutes les réponses sont des propositions : les prix et coordonnées sont vérifiés
  * par l'application et validés par un acheteur avant usage.
  */
 public interface MarketIntelligence {
 
     boolean enabled();
+
+    /** Nom du moteur utilisé pour la veille web (affiché dans l'application et le rapport). */
+    default String provider() {
+        return enabled() ? "Agent IA" : null;
+    }
 
     /** Fournisseurs du marché proposant l'article ou un équivalent. */
     List<SupplierFinding> findSuppliers(ProductInfo product, int maxResults);

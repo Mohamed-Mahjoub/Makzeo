@@ -159,12 +159,24 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: SMTP_PORT
-            # Facultatifs : clé de l'API Claude et identifiants SMTP (absents = fonction désactivée)
+            # Facultatifs : clés de la veille web (Claude, Serper, Tavily) et identifiants SMTP (absents = fonction désactivée)
             - name: AI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: stock-secrets
                   key: AI_API_KEY
+                  optional: true
+            - name: SERPER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: SERPER_API_KEY
+                  optional: true
+            - name: TAVILY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stock-secrets
+                  key: TAVILY_API_KEY
                   optional: true
             - name: SPRING_MAIL_USERNAME
               valueFrom:

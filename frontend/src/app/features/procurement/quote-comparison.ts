@@ -214,7 +214,7 @@ function emptyQuote(productId: number): QuoteRequest {
           <label class="field"><span>Coller le texte du devis (courriel, PDF) pour le faire lire par l'agent</span>
             <textarea rows="5" [(ngModel)]="quoteText" maxlength="20000" placeholder="Bonjour, suite à votre demande RFQ-…, nous vous proposons…"></textarea></label>
           <button type="button" class="btn btn--sm btn--ghost" [disabled]="!quoteText.trim() || extracting()" (click)="extract()">
-            <app-icon name="search" [size]="14" /> {{ extracting() ? 'Lecture…' : 'Lire avec l’IA' }}</button>
+            <app-icon name="search" [size]="14" /> {{ extracting() ? 'Lecture…' : 'Lire le devis' }}</button>
           <p class="small muted">Les champs ci-dessous sont pré-remplis : vérifiez-les avant d'enregistrer.</p>
         </div>
         <form class="form form--grid" (ngSubmit)="saveQuote()" #f="ngForm">

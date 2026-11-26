@@ -129,8 +129,10 @@ services:
       SUPPLIER_SERVICE_URL: http://supplier-service:8083
       STOCK_SERVICE_URL: http://stock-service:8084
       APP_URL: http://localhost:8080
-      # Agent IA (facultatif) : sans clé, la veille web est désactivée
+      # Veille web (facultatif) : API Claude, ou à défaut Serper + Tavily ; sans clé, veille désactivée
       AI_API_KEY: ${AI_API_KEY:-}
+      SERPER_API_KEY: ${SERPER_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       # Serveur SMTP : Mailpit en local (aucun courriel ne sort réellement)
       SPRING_MAIL_HOST: ${SMTP_HOST:-mailpit}
       SPRING_MAIL_PORT: ${SMTP_PORT:-1025}

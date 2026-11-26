@@ -22,7 +22,7 @@ import { PageHeader } from '../../shared/page-header';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header title="Achats intelligents"
-                     [subtitle]="'Veille mensuelle du marché (' + (overview()?.marketName ?? 'Tunisie') + '), demandes de prix, prédiction des prix et achats anticipés'">
+                     [subtitle]="'Veille mensuelle du marché (' + (overview()?.marketName ?? 'Tunisie') + (overview()?.aiProvider ? ', via ' + overview()?.aiProvider : '') + '), demandes de prix, prédiction des prix et achats anticipés'">
       <app-ai-report-button [primary]="!auth.canManageCatalog()" />
       @if (auth.canManageCatalog()) {
         <button type="button" class="btn btn--primary" (click)="runWatch()" [disabled]="running()">
@@ -33,8 +33,8 @@ import { PageHeader } from '../../shared/page-header';
     @if (overview(); as o) {
       @if (!o.aiEnabled || !o.mailEnabled) {
         <div class="notice">
-          @if (!o.aiEnabled) { <p><strong>Agent IA non configuré :</strong> la recherche de fournisseurs sur le web est désactivée.
-            Comparaisons, prédictions statistiques et recommandations restent disponibles.</p> }
+          @if (!o.aiEnabled) { <p><strong>Veille web non configurée :</strong> renseignez SERPER_API_KEY (et TAVILY_API_KEY)
+            ou AI_API_KEY pour rechercher des fournisseurs sur le web. Comparaisons, prédictions statistiques et recommandations restent disponibles.</p> }
           @if (!o.mailEnabled) { <p><strong>Serveur de messagerie non configuré :</strong> les demandes de prix validées ne peuvent pas être envoyées.</p> }
         </div>
       }

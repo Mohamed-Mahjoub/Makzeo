@@ -87,12 +87,13 @@ score et sa note qualité est plus faible. Le module recommande Navigator chez S
 - Économies potentielles et réalisées par article, fournisseur et mois.
 - Après l'acceptation de l'étape 2, l'économie apparaît dans le ROI.
 
-### 7. (Option, avec une clé `AI_API_KEY` et Internet) Veille en direct
+### 7. (Option, avec Internet) Veille en direct
 
-**Lancer la veille** : l'IA (API Claude avec recherche web limitée à la Tunisie) cherche, pour
-chaque article, les fournisseurs tunisiens et les équivalents, et prépare les demandes de prix. Les
-nouveaux fournisseurs arrivent au statut **Candidat** (Achats IA > Fournisseurs du marché) et
-doivent être validés.
+**Lancer la veille** : pour chaque article, Serper cherche sur Google (Shopping et pages web,
+limités à la Tunisie) les revendeurs de l'article ou d'un équivalent, puis Tavily lit leurs pages
+pour relever le prix, l'e-mail et le téléphone (avec `SERPER_API_KEY` et `TAVILY_API_KEY` ; ou
+l'API Claude si `AI_API_KEY` est fournie). Les nouveaux fournisseurs arrivent au statut
+**Candidat** (Achats IA > Fournisseurs du marché) avec leur justification, et doivent être validés.
 
 ## 10.3 Questions probables
 
@@ -100,5 +101,5 @@ doivent être validés.
 |---|---|
 | L'IA invente-t-elle des prix ? | Non : un prix n'entre dans les calculs que s'il vient d'un achat, d'un devis ou d'une page web citée. Les calculs (classement, prévision, quantité optimale) sont des algorithmes déterministes et testés. |
 | Pourquoi pas un modèle de deep learning pour les prix ? | Historiques courts (24 points) : une régression log-linéaire avec saisonnalité est plus robuste et explicable ; le niveau de confiance l'indique. |
-| Que se passe-t-il sans clé d'API ? | Tout fonctionne sauf la veille web et la lecture automatique des devis. |
-| Et si un fournisseur répond par e-mail ? | Coller le devis puis « Lire avec l’IA » (page Comparaison des offres) : extraction automatique, puis vérification humaine. |
+| Que se passe-t-il sans clé d’API ? | Tout fonctionne sauf la veille web. Sans clé Claude, la veille passe par Serper + Tavily. |
+| Et si un fournisseur répond par e-mail ? | Coller le devis puis « Lire le devis » (page Comparaison des offres) : prix, délai, validité et paiement sont relevés automatiquement, puis vérifiés par l’acheteur. |
