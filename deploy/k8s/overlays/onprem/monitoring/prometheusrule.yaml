@@ -71,4 +71,4 @@ spec:
             severity: warning
           annotations:
             summary: "Erreurs répétées du moteur IA (API Claude)"
-            description: "Plus de 5 appels à l'API Claude en erreur sur la dernière heure : vérifier AI_API_KEY, le quota et l'accès réseau sortant."
+            description: "Plus de 5 appels de la veille (API Claude, Serper ou Tavily) en erreur sur la dernière heure : vérifier AI_API_KEY, le quota et l'accès réseau sortant."

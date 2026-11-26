@@ -51,7 +51,7 @@ public class OverviewService {
         long falling = predictions.stream().filter(p -> p.changePct().doubleValue() <= -properties.minChangePct())
                 .count();
         long open = recommendations.search(RecommendationStatus.OPEN, null, 0, 1).totalElements();
-        return new OverviewView(intelligence.enabled(), mail.configured(), properties.currency(),
+        return new OverviewView(intelligence.enabled(), intelligence.provider(), mail.configured(), properties.currency(),
                 properties.marketName(), runs.findLatest().map(WatchRunView::from).orElse(null),
                 suppliers.count(MarketSupplierStatus.CANDIDATE), suppliers.count(MarketSupplierStatus.VALIDATED),
                 rfqs.count(RfqStatus.DRAFT), rfqs.count(RfqStatus.SENT), open, savings.totalPotential(),

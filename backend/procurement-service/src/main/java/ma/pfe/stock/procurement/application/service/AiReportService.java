@@ -95,7 +95,7 @@ public class AiReportService {
                 ov.candidateSuppliers(), ov.validatedSuppliers(), ov.draftRfqs(), ov.sentRfqs());
 
         return new AiReport(Instant.now(), Objects.requireNonNullElse(user, "-"), ov.currency(), ov.marketName(),
-                ov.aiEnabled(), kpis, recoLines, predictionLines, comparisons, amounts(savings.bySupplier()),
+                ov.aiEnabled(), ov.aiProvider(), kpis, recoLines, predictionLines, comparisons, amounts(savings.bySupplier()),
                 amounts(savings.byMonth()), ov.lastRun());
     }
 

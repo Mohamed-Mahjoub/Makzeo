@@ -102,9 +102,9 @@ public class AiReportPdfRenderer implements AiReportRenderer {
         cell.addElement(new Paragraph("Rapport de l'agent IA achats", TITLE));
         Paragraph sub = new Paragraph(String.format(Locale.FRANCE,
                 "Veille fournisseurs, comparaison des offres, prédiction des prix et achats anticipés - marché : %s%n"
-                        + "Généré le %s par %s - montants en %s hors taxes - moteur IA : %s",
+                        + "Généré le %s par %s - montants en %s hors taxes - %s",
                 r.marketName(), DATE_TIME.format(r.generatedAt().atZone(zone)), r.generatedBy(), r.currency(),
-                r.aiEnabled() ? "API Claude activée" : "non configuré (calculs statistiques seuls)"), BAND);
+                r.aiEnabled() ? "veille web par " + r.aiProvider() : "veille web non configurée (calculs statistiques seuls)"), BAND);
         sub.setSpacingBefore(4);
         cell.addElement(sub);
         band.addCell(cell);

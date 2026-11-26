@@ -284,6 +284,8 @@ export interface WatchRun {
 
 export interface ProcurementOverview {
   aiEnabled: boolean;
+  /** Moteur de la veille web : « API Claude », « Serper + Tavily », « Serper » ; null si non configurée. */
+  aiProvider: string | null;
   mailEnabled: boolean;
   currency: string;
   marketName: string;

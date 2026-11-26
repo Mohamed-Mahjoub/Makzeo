@@ -24,6 +24,7 @@ s'il provient d'un achat réel, d'un devis reçu, d'une page web citée ou du ca
                                                    │            AnticipatedPurchaseOptimizer, SavingsCalculator
                                                    ├──► product / supplier / stock-service (REST + JWT relayé)
                                                    ├──► API Claude (veille web, rédaction RFQ, lecture de devis)
+                                                   ├──► ou Serper + Tavily (veille web sans modèle de langage)
                                                    ├──► SMTP (Mailpit en démonstration)
                                                    └──► PostgreSQL procurement_db (Flyway V1)
 ```
@@ -34,8 +35,11 @@ s'il provient d'un achat réel, d'un devis reçu, d'une page web citée ou du ca
   des fournisseurs et des offres sur le web, rédiger le texte des RFQ, extraire les données
   d'un devis collé en texte. Ses réponses sont contraintes par un schéma JSON (sortie
   structurée), puis validées côté serveur.
-- Sans `AI_API_KEY`, le module reste utilisable : RFQ rédigées par modèle, devis saisis à la
-  main, prédictions statistiques sans signal marché.
+- Sans `AI_API_KEY`, la veille web peut passer par **Serper + Tavily** (section 9.5). Sans aucune
+  clé, le module reste utilisable : RFQ rédigées par modèle, prédictions statistiques sans signal
+  marché. La lecture d'un devis collé fonctionne dans tous les cas : par l'API Claude si elle est
+  configurée, sinon par un lecteur de texte (libellés « Prix unitaire », « Délai », « Valable
+  jusqu'au »…).
 
 ## 9.2 Déroulement
 
@@ -77,6 +81,9 @@ Dans `.env` (aucune valeur n'est versionnée) :
 
 ```bash
 AI_API_KEY=<clé de l'API Claude, facultative>
+# ou, sans clé Claude :
+SERPER_API_KEY=<clé Serper>
+TAVILY_API_KEY=<clé Tavily, facultative>
 PROCUREMENT_MANAGER_EMAILS=responsable.achats@makzeo.local
 # SMTP_HOST / SMTP_PORT / SMTP_USERNAME / SMTP_PASSWORD : laisser vides pour utiliser Mailpit
 ```
@@ -95,7 +102,9 @@ Ajouter au groupe de variables `makzeo-secrets` (toutes facultatives, en secret)
 
 | Variable | Rôle |
 |---|---|
-| `AI_API_KEY` | Clé de l'API Claude ; absente : module sans IA |
+| `AI_API_KEY` | Clé de l'API Claude ; prioritaire si elle est renseignée |
+| `SERPER_API_KEY` | Clé Serper : veille web sans API Claude |
+| `TAVILY_API_KEY` | Clé Tavily : lecture des pages des fournisseurs (prix, e-mail, téléphone) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | Compte d'un SMTP réel (sinon Mailpit, sans authentification) |
 
 Les autres réglages sont dans `deploy/k8s/base/configmap.yaml` (`SMTP_HOST`, `SMTP_PORT`,
@@ -166,3 +175,32 @@ comporte une rangée **Module IA achats**.
 - Les prévisions sont indicatives ; le niveau de confiance doit être lu avec le chiffre.
 - Le coût de l'API Claude croît avec le nombre d'articles surveillés
   (`PROCUREMENT_MAX_PRODUCTS`, `AI_MAX_SEARCHES`).
+
+## 9.5 Veille web avec Serper et Tavily (sans API Claude)
+
+Quand `AI_API_KEY` est vide et `SERPER_API_KEY` renseignée, `MarketIntelligenceRouter` confie la
+veille à `WebSearchMarketIntelligence`. Aucune donnée n'est générée par un modèle : tout est lu
+dans les résultats de recherche et les pages des fournisseurs, avec des règles fixes et testées
+(`WebText`, `QuoteTextParser`).
+
+| Étape | Outil | Ce qui est fait |
+|---|---|---|
+| 1. Recherche | Serper `/shopping` (Google Shopping, `gl=tn`) | Offres avec marchand et prix affiché |
+| 2. Recherche | Serper `/search` (Google, `gl=tn`) | Pages des revendeurs : « désignation référence prix Tunisie » |
+| 3. Filtrage | règles | Un fournisseur par domaine ; sites du marché seulement (`.tn`, prix en DT/TND) ; réseaux sociaux et comparateurs exclus |
+| 4. Lecture | Tavily `/extract` (5 pages par article, 1 crédit) | Prix de l'article (premier montant en dinars après sa référence, plausible), e-mail, téléphone, ville |
+| 5. Classement | règles | **Identique** si la référence constructeur ou l'EAN figure sur la page ; **équivalent** si au moins 50 % des mots-clés de la désignation se retrouvent ; sinon écarté |
+
+- Prix : `289,000 DT`, `1 299,000 TND`, `1.299,000 DT` sont reconnus ; TTC par défaut (prix
+  publics), HT si la mention suit le montant. Un prix hors de l'intervalle [÷3 ; ×3] du dernier
+  prix payé est ignoré : aucun prix n'est deviné.
+- Chaque fournisseur trouvé arrive au statut **Candidat** avec une justification
+  (« Référence CE285A trouvée chez Tunewtec. Prix 288.000 TND TTC relevé sur Google Shopping. »).
+- Coût par veille (25 articles) : 50 requêtes Serper et environ 25 crédits Tavily, dans les
+  offres gratuites des deux services.
+- Pas de « signal marché » sans modèle de langage : la prévision des prix reste statistique.
+- Les appels sont mesurés dans `makzeo_procurement_ai_call` (opérations `serper_shopping`,
+  `serper_search`, `tavily_extract`).
+
+Clés : <https://serper.dev> et <https://tavily.com> (comptes gratuits). Elles se renseignent
+comme `AI_API_KEY` : `.env` en local, groupe de variables `makzeo-secrets` dans Azure DevOps.

@@ -42,6 +42,11 @@ public class ClaudeMarketIntelligence implements MarketIntelligence {
         return client.configured();
     }
 
+    @Override
+    public String provider() {
+        return "API Claude";
+    }
+
     // ------------------------------------------------------------------ veille fournisseurs
 
     @Override

@@ -63,6 +63,12 @@ app:
     api-key: ${AI_API_KEY:}
     model: ${AI_MODEL:claude-sonnet-5}
     max-searches-per-call: ${AI_MAX_SEARCHES:5}
+  websearch:
+    # Veille web sans modèle de langage, utilisée quand AI_API_KEY est vide :
+    # Serper (résultats Google) trouve les fournisseurs, Tavily lit leurs pages. Secrets fournis par l'environnement.
+    serper-api-key: ${SERPER_API_KEY:}
+    tavily-api-key: ${TAVILY_API_KEY:}
+    max-pages-per-product: ${WEBSEARCH_MAX_PAGES:5}
   openapi:
     description: "Module IA achats : veille fournisseurs, demandes de prix, comparaison des devis, prédiction des prix et achats anticipés."
 

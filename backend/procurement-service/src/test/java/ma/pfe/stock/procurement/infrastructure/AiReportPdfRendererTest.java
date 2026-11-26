@@ -30,7 +30,7 @@ class AiReportPdfRendererTest {
 
     @Test
     void rendersCompleteReport() {
-        AiReport report = new AiReport(Instant.parse("2026-11-24T18:00:00Z"), "admin", "TND", "Tunisie", false,
+        AiReport report = new AiReport(Instant.parse("2026-11-24T18:00:00Z"), "admin", "TND", "Tunisie", false, null,
                 kpis(),
                 List.of(new AiReport.RecommendationLine("Changement de fournisseur", "À décider", "CE285A",
                                 "Toner HP 85A noir original", "Tunewtec", 36, d("326.891"), d("242.017"),
@@ -60,7 +60,7 @@ class AiReportPdfRendererTest {
 
     @Test
     void rendersEmptyReport() {
-        AiReport report = new AiReport(Instant.now(), "consultant", "TND", "Tunisie", true,
+        AiReport report = new AiReport(Instant.now(), "consultant", "TND", "Tunisie", true, "Serper + Tavily",
                 new AiReport.Kpis(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0, 0,
                         0, 0, 0, 0, 0, 0, 0),
                 List.of(), List.of(), List.of(), List.of(), List.of(), null);

@@ -155,7 +155,7 @@ public class MarketWatchService {
             Map<Long, StockInfo> situation = stock.stockSituation(products.stream().map(ProductInfo::id).toList(),
                     properties.consumptionLookbackDays());
             if (!intelligence.enabled()) {
-                warnings.add("Agent IA non configuré : recherche web désactivée, prédictions statistiques seules.");
+                warnings.add("Veille web non configurée (SERPER_API_KEY ou AI_API_KEY) : prédictions statistiques seules.");
             }
 
             for (ProductInfo product : products) {
