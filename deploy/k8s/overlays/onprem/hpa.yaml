@@ -1,4 +1,5 @@
 # Mise à l'échelle automatique selon la charge CPU (nécessite metrics-server, installé avec le cluster)
+# minReplicas 1 : le laboratoire tourne sur un PC de 16 Go ; la charge ajoute des pods jusqu'à maxReplicas.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -8,7 +9,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: auth-service
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
@@ -27,7 +28,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: product-service
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
@@ -46,7 +47,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: supplier-service
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
@@ -65,7 +66,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: stock-service
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 4
   metrics:
     - type: Resource
@@ -84,7 +85,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: reporting-service
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
@@ -103,7 +104,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: frontend
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
@@ -123,7 +124,7 @@ spec:
     kind: Deployment
     name: procurement-service
   # la veille est protégée par un verrou en base : plusieurs réplicas ne la lancent qu'une fois
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource

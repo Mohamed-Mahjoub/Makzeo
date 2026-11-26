@@ -9,13 +9,16 @@ applicatifs (taint `control-plane`), si bien que les deux rôles cohabitent sans
 
 | VM | Nom d'hôte | IP | vCPU | RAM | Disque | Rôle |
 |---|---|---|---|---|---|---|
-| master + devops | k8s-master | 192.168.80.10 | 6 | 12 Go (10 Go minimum) | 100 Go | Plan de contrôle Kubernetes ; SonarQube, Nexus et agent Azure Pipelines (Docker) |
-| worker1 | k8s-worker1 | 192.168.80.11 | 4 | 6 Go | 50 Go | Charges applicatives, Ingress |
-| worker2 | k8s-worker2 | 192.168.80.12 | 4 | 6 Go | 50 Go | Charges applicatives, Ingress |
+| master + devops | k8s-master | 192.168.80.10 | 4 | 7 Go | 60 Go | Plan de contrôle Kubernetes ; SonarQube, Nexus et agent Azure Pipelines (Docker) |
+| worker1 | k8s-worker1 | 192.168.80.11 | 2 | 3 Go | 30 Go | Charges applicatives, Ingress |
+| worker2 | k8s-worker2 | 192.168.80.12 | 2 | 3 Go | 30 Go | Charges applicatives, Ingress |
 
-Total : 14 vCPU et 24 Go de RAM (22 Go au minimum) ; un PC de 32 Go est recommandé. SonarQube
-(environ 2,5 Go) et Nexus (environ 2 Go) sont les plus gourmands : sous 10 Go, le plan de
-contrôle ralentit pendant les builds.
+Total : 8 vCPU et 13 Go de RAM, dimensionné pour un PC de 16 Go (processeur 4 cœurs / 8 threads).
+Disques en allocation dynamique : l'espace réellement occupé reste autour de 45 Go. Pour tenir dans
+cette enveloppe, l'overlay `onprem` démarre un seul pod par microservice (l'autoscaling monte
+jusqu'à 3 ou 4 sous charge) et réserve 256 Mo par service Java (limite 640 Mo) ; Nexus tourne avec
+768 Mo de tas. Pendant les builds, fermer Docker Desktop et les applications lourdes de Windows.
+Avec un PC de 32 Go, on peut monter le master à 12 Go et les workers à 6 Go.
 
 ```
                 PC Windows (VMware Workstation) ─── Internet ─── Azure DevOps (dev.azure.com)
